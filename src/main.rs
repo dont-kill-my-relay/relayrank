@@ -1,5 +1,6 @@
 use clap::Parser;
 
+mod consensuses;
 mod network_metric;
 mod relay_metric;
 
