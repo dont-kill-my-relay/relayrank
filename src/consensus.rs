@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     net::{Ipv4Addr, SocketAddrV6},
     str::FromStr,
 };
@@ -146,6 +147,7 @@ pub struct Relay {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
     relays: Vec<Relay>,
+    bandwidth_weights: HashMap<String, u32>,
 }
 
 impl FromStr for Consensus {
@@ -154,9 +156,13 @@ impl FromStr for Consensus {
     fn from_str(s: &str) -> Result<Self> {
         let s = parse_preamble(s)?;
         let s = parse_authorities(s)?;
-        let (relays, _) = parse_relays(s)?;
+        let (relays, s) = parse_relays(s)?;
+        let bandwidth_weights = parse_footer(s)?;
 
-        Ok(Self { relays })
+        Ok(Self {
+            relays,
+            bandwidth_weights,
+        })
     }
 }
 
@@ -280,10 +286,41 @@ fn parse_flags(s: &str) -> Result<RelayFlags> {
     Ok(flags)
 }
 
+fn parse_footer(s: &str) -> Result<HashMap<String, u32>> {
+    let (_, rest) = s
+        .split_once("\n")
+        .context("unable to skip directory footer")?;
+    let (bdw_wght, _) = rest
+        .split_once("\n")
+        .context("unable to split bandwidth weights")?;
+
+    Ok(bdw_wght
+        .split(" ")
+        .filter_map(|w| w.split_once("="))
+        .map(|(k, v)| (k.to_string(), v.parse().unwrap_or_default()))
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::{fs::File, io::Read};
+
+    #[test]
+    fn footer() {
+        let footer = "directory-footer
+bandwidth-weights Wbd=1276 Wbe=0 Wbg=4430 Wbm=10000 Wdb=10000 Web=10000 Wed=7447 Wee=10000 Weg=7447 Wem=10000 Wgb=10000 Wgd=1276 Wgg=5570 Wgm=5570 Wmb=10000 Wmd=1276 Wme=0 Wmg=4430 Wmm=10000
+directory-signature 0232AF901C31A04EE9848595AF9BB7620D4C5B2E 79ABAEE942F8F0F6E5FEB989D2539B05AB86DD8B
+-----BEGIN SIGNATURE-----
+Dtx5MNHwIZ/peN77uhDz70LSVHuFcSRZnpvxTnTTI63Sliz8rgAEy7XVn+vVnyQi
+TF81h0QR+JyDOiX8UqlKWyV7Q9FdsQ2Q581hiHH7AUOgUh4vKGodr+yijTfdYw5U
+9ivFKcLShXfo8m4tSsPpAd0sEpTwL1L9V9Kjb+qR8nb0DNiE+Ntq7AhBFKj6xPPq
+U539pXSIgzKgSbAE2pTIEHqLoHVHBStZ5+g6QxY8zp457u0F0kLoS2Qdev69Ayft
+UNPylxjvX0nB5XWwlSRhFRjrPHU+l+pi8L7qKiFnrmKQVbb4ADbFQZXDOY7UX6fP
+T0YyB5oFq5qcZfS+lNjeiQ==
+-----END SIGNATURE-----";
+        let _ = parse_footer(footer).unwrap();
+    }
 
     #[test]
     fn relay() {
