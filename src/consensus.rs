@@ -10,7 +10,7 @@ use derive_more::From;
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, From)]
-struct RelayId([u8; 20]);
+pub struct RelayId([u8; 20]);
 
 impl FromStr for RelayId {
     type Err = anyhow::Error;
@@ -22,7 +22,7 @@ impl FromStr for RelayId {
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, From)]
-struct Digest([u8; 20]);
+pub struct Digest([u8; 20]);
 
 impl FromStr for Digest {
     type Err = anyhow::Error;
@@ -34,7 +34,7 @@ impl FromStr for Digest {
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, From)]
-struct Port(u16);
+pub struct Port(u16);
 
 impl FromStr for Port {
     type Err = anyhow::Error;
@@ -90,7 +90,7 @@ impl FromStr for RelayFlags {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct Version {
+pub struct Version {
     major: u8,
     minor: u8,
     micro: u8,
