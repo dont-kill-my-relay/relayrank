@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Context, Ok, Result, anyhow, bail};
+use anyhow::{Context, Ok, Result, bail};
 use base64::prelude::*;
 use bitflags::bitflags;
 use derive_more::From;
@@ -89,6 +89,46 @@ impl FromStr for RelayFlags {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Version {
+    major: u8,
+    minor: u8,
+    micro: u8,
+    patch: u8,
+    status: Option<String>,
+}
+
+impl FromStr for Version {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
+        let (_, version) = s.split_once(" ").context("unable to parse version")?;
+
+        let (numbers, status) = version
+            .split_once("-")
+            .map(|(n, v)| (n, Some(v.to_owned())))
+            .unwrap_or((version, None));
+
+        let mut numbers = numbers.splitn(4, ".");
+        let result = match (
+            numbers.next(),
+            numbers.next(),
+            numbers.next(),
+            numbers.next(),
+        ) {
+            (Some(major), Some(minor), Some(micro), Some(patch)) => Self {
+                major: major.parse()?,
+                minor: minor.parse()?,
+                micro: micro.parse()?,
+                patch: patch.parse()?,
+                status,
+            },
+            _ => bail!("unable to parse verison"),
+        };
+        Ok(result)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Relay {
     nickname: String,
@@ -100,6 +140,7 @@ pub struct Relay {
     dirport: Port,
     ipv6: Option<SocketAddrV6>,
     flags: RelayFlags,
+    verison: Version,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -184,6 +225,7 @@ fn parse_relay(s: &str) -> Result<(Relay, &str)> {
     let mut dirport: Option<Port> = None;
     let mut ipv6: Option<SocketAddrV6> = None;
     let mut flags: Option<RelayFlags> = None;
+    let mut version: Option<Version> = None;
 
     let mut s = s;
     loop {
@@ -209,6 +251,7 @@ fn parse_relay(s: &str) -> Result<(Relay, &str)> {
             }
             "a" => ipv6 = Some(content.parse()?),
             "s" => flags = Some(parse_flags(content)?),
+            "v" => version = Some(content.parse()?),
             "p" => {
                 let relay = Relay {
                     nickname: nickname.context("nickname was not provided")?,
@@ -219,6 +262,7 @@ fn parse_relay(s: &str) -> Result<(Relay, &str)> {
                     dirport: dirport.context("dirport was not provided")?,
                     ipv6,
                     flags: flags.context("flags were not provided")?,
+                    verison: version.context("version was not provided")?,
                 };
                 return Ok((relay, rest));
             }
