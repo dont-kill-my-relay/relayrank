@@ -1,6 +1,7 @@
 use clap::Parser;
 
 mod consensus;
+mod descriptor;
 mod network_metric;
 mod relay_metric;
 
@@ -14,8 +15,8 @@ enum Args {
 fn main() {
     let args = Args::parse();
     match args {
-        Args::BuildInference => println!("build inference"),
-        Args::NetworkMetric => println!("network metric"),
-        Args::RelayMetric => println!("relay metric"),
+        Args::BuildInference => todo!("build inference"),
+        Args::NetworkMetric => todo!("network metric"),
+        Args::RelayMetric => todo!("relay metric"),
     }
 }

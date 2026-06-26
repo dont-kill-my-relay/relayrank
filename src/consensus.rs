@@ -8,6 +8,7 @@ use anyhow::{Context, Ok, Result, bail};
 use base64::prelude::*;
 use bitflags::bitflags;
 use derive_more::From;
+use hex::FromHex;
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, From)]
@@ -30,6 +31,15 @@ impl FromStr for Digest {
 
     fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
         Ok(parse_id(s)?.into())
+    }
+}
+
+impl FromHex for Digest {
+    type Error = anyhow::Error;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> std::prelude::v1::Result<Self, Self::Error> {
+        let digest = <[u8; 20]>::from_hex(hex)?;
+        Ok(digest.into())
     }
 }
 
@@ -337,10 +347,7 @@ p reject 1-65535
 
     #[test]
     fn parse_consensus() {
-        let mut file = File::open("test/2026-05-01-00-00-00-consensus").unwrap();
-        let mut content = String::new();
-        file.read_to_string(&mut content).unwrap();
-
+        let content = include_str!("../test/2026-05-01-00-00-00-consensus");
         let _: Consensus = content.parse().unwrap();
     }
 }

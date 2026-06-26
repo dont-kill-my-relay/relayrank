@@ -1,0 +1,53 @@
+@type server-descriptor 1.0
+router ZyronsRelay 51.195.152.241 443 0 0
+identity-ed25519
+-----BEGIN ED25519 CERT-----
+AQQAByamAZebk/CKsgPDdVeYA2bOlSfd7H3vSQ6hlug0Q/rikoxFAQAgBAD13Cx8
+FSEimqgOo7w2aJOVCt817xUbj3CWXTLK6Zs/29ArBoslvdSaMxo5WuY5WGhh/EG4
+CH+sc1PyVoTOeJj41iaJDp2x0BovWLWbctYKFIzNUjUca8jebou9CpyQ0wc=
+-----END ED25519 CERT-----
+master-key-ed25519 9dwsfBUhIpqoDqO8NmiTlQrfNe8VG49wll0yyumbP9s
+or-address [2001:41d0:800:2e90:13df:5ba7:c7a6:1]:443
+platform Tor 0.4.7.13 on Linux
+proto Cons=1-2 Desc=1-2 DirCache=2 FlowCtrl=1-2 HSDir=2 HSIntro=4-5 HSRend=1-2 Link=1-5 LinkAuth=1,3 Microdesc=1-2 Padding=2 Relay=1-4
+published 2023-05-21 10:37:29
+fingerprint B09B 5E35 2D85 A34C 199B 2899 FB38 430F 1214 29B6
+uptime 7254021
+bandwidth 4194304 5242880 4655958
+extra-info-digest 93279D33C1306A50B50F7E3B15EC7F3C8A8CDCBA +JJzcrvGfOUvaeDHujG4wo/rt+EtAfDKL6KwJ5RmYRE
+onion-key
+-----BEGIN RSA PUBLIC KEY-----
+MIGJAoGBAOnXSVmaQuH1r/XqTOgaNkZaGcf5+54zAVE5CXKQvY4BmJ7y8vFOQRVN
+l/yLot2ykiFaGGuEwfpmSPl8FcESb9pAwK0cxI4e7bCJ/PNQY8spCYioU+26Nmzs
+MFep5znTTyWW7UfL8pFKquXDGsxXiJMvYnFZC0FxYAYCWi82kkGbAgMBAAE=
+-----END RSA PUBLIC KEY-----
+signing-key
+-----BEGIN RSA PUBLIC KEY-----
+MIGJAoGBALsK+xL1RADORRIBn7diOpn41XXTEPKetuUdF2yveNu8XaCKkWMI9QpA
+IyH+/OTjEPYwyo35gCJzjbkwoaUYP9gtc82TxaGVgX+MI2NYzMn8Q0QfufoLEsvE
+vXgDIbX4N5k5a7d1Kes4js3FyO5/YZUSBfPl97bfarUlCMC5GMUfAgMBAAE=
+-----END RSA PUBLIC KEY-----
+onion-key-crosscert
+-----BEGIN CROSSCERT-----
+h8NtqkbZkArHf7uLDJDUKlTM7Uy+20o/ByU/Ho/Wt1i38HT6M0EqHRt08GkdCcCc
+qzL0hn0Wo1Xrle6RsbiCDwZ/wF2C/q8XGjUc99+ZhUVue7VOL79UwtVwyy/WVWi9
+NcCA35zMGD6ZO3qhs0SJiPeRNHP45f2ruFkMpLNmTuQ=
+-----END CROSSCERT-----
+ntor-onion-key-crosscert 1
+-----BEGIN ED25519 CERT-----
+AQoAByabAfXcLHwVISKaqA6jvDZok5UK3zXvFRuPcJZdMsrpmz/bAHoCh0L0bOOv
+wWcD+ngnp2ZyVh6sOTopAE2w1DAuIrfuzrXpWerSZYNblVqumOJpMatJdVRBfLQT
+E0kRq2GGCgg=
+-----END ED25519 CERT-----
+hidden-service-dir
+contact tor(at)zyron(dot)de
+ntor-onion-key w5BVhhWLm5mX7E1yXotYO7O/3xCxaNoHvxyTvc4X6zA
+reject *:*
+tunnelled-dir-server
+router-sig-ed25519 ljoHrzm+MmwSYbwYELC6YXjc1GQP+53alW93Ew+WBJMSTz6ku8m4JkkKn+zf8EmAUS6WRZeudBJ9PvjpFgJ1Cg
+router-signature
+-----BEGIN SIGNATURE-----
+RW0B2EfFNKnb37k3zQBwfYObHrPFF26b4joYWOKE08hj6v8JILBCFlv3ULU1r0UL
+sV3oGaMbxsLmt/EAtDjBFLpqfp4SkS8SV3KkCpe7umQGC7uWVdKK2344PdKxNqxx
+l83fEkYTeA194Zv2wy9e7gTb+lB+JgNj30pp4QDz70g=
+-----END SIGNATURE-----
