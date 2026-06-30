@@ -49,7 +49,7 @@ impl FromStr for Bandwidth {
 pub struct Descriptor {
     uptime: Uptime,
     bandwidth: Bandwidth,
-    family: Option<Vec<Digest>>,
+    family: Vec<Digest>,
 }
 
 impl FromStr for Descriptor {
@@ -84,14 +84,13 @@ impl FromStr for Descriptor {
         Ok(Self {
             uptime: uptime.context("uptime is not provided")?,
             bandwidth: bandwidth.context("bandwith is not provided")?,
-            family,
+            family: family.unwrap_or_default(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
