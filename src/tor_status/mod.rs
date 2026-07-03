@@ -3,16 +3,18 @@ use std::{
     io::Read,
     net::{Ipv4Addr, SocketAddrV6},
     path::{Path, PathBuf},
-    slice::Iter,
+    slice,
     str::FromStr,
 };
 
-use anyhow::{Context, Ok, Result, bail};
+use anyhow::{Context, Result, bail};
 use base64::prelude::*;
 use bitflags::bitflags;
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use derive_more::From;
 use hex::{FromHex, ToHex};
+
+use descriptor::Descriptor;
 
 mod consensus;
 mod descriptor;
@@ -243,6 +245,7 @@ impl From<(&consensus::Relay, &descriptor::Descriptor)> for Relay {
 pub struct Consensus {
     cache_folder: PathBuf,
     datetime: DateTime<Utc>,
+    pub relays: Vec<Relay>,
     consensus: consensus::Consensus,
 }
 
@@ -263,49 +266,23 @@ impl Consensus {
 
         consensus_file.read_to_string(&mut content)?;
 
+        let consensus: consensus::Consensus = content.parse()?;
+        let relays = consensus
+            .relays
+            .iter()
+            .filter_map(|relay| {
+                let Ok(desc) = Descriptor::get_descriptor(cache_folder, &datetime, relay) else {
+                    return None;
+                };
+                Some((relay, &desc).into())
+            })
+            .collect();
+
         Ok(Self {
             cache_folder: cache_folder.to_path_buf(),
             datetime,
-            consensus: content.parse()?,
+            relays,
+            consensus,
         })
-    }
-
-    pub fn relays(&self) -> RelaysIterator<'_> {
-        RelaysIterator {
-            consensus: self,
-            iter: self.consensus.relays.iter(),
-        }
-    }
-
-    fn find_descriptor(&self, relay: &consensus::Relay) -> Result<descriptor::Descriptor> {
-        let descriptor_folder = self.cache_folder.join("relay_descriptors");
-        let month_descriptors = descriptor_folder.join(format!(
-            "server-descriptors-{:04}-{:02}",
-            self.datetime.year(),
-            self.datetime.month()
-        ));
-        let descriptor = month_descriptors.join(relay.digest.encode_hex::<String>());
-
-        let mut descriptor = File::open(descriptor)?;
-        let mut content = String::new();
-
-        descriptor.read_to_string(&mut content)?;
-
-        content.parse()
-    }
-}
-
-pub struct RelaysIterator<'a> {
-    consensus: &'a Consensus,
-    iter: Iter<'a, consensus::Relay>,
-}
-
-impl<'a> Iterator for RelaysIterator<'a> {
-    type Item = Relay;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let relay = self.iter.next()?;
-        let desc = self.consensus.find_descriptor(relay).ok()?;
-        Some((relay, &desc).into())
     }
 }

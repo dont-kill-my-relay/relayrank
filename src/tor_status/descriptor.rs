@@ -1,16 +1,42 @@
+use crate::tor_status::consensus;
+
 use super::{Bandwidth, Uptime};
-use std::str::FromStr;
+use std::{fs::File, io::Read, path::Path, str::FromStr};
 
 use super::Digest;
 
-use anyhow::{Context, Ok};
-use hex::FromHex;
+use anyhow::{Context, Result};
+use chrono::{DateTime, Datelike, Utc};
+use hex::{FromHex, ToHex};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Descriptor {
     pub uptime: Uptime,
     pub bandwidth: Bandwidth,
     pub family: Vec<Digest>,
+}
+
+impl Descriptor {
+    pub fn get_descriptor(
+        cache_folder: &Path,
+        datetime: &DateTime<Utc>,
+        relay: &consensus::Relay,
+    ) -> Result<Self> {
+        let descriptor_folder = cache_folder.join("relay_descriptors");
+        let month_descriptors = descriptor_folder.join(format!(
+            "server-descriptors-{:04}-{:02}",
+            datetime.year(),
+            datetime.month()
+        ));
+        let descriptor = month_descriptors.join(relay.digest.encode_hex::<String>());
+
+        let mut descriptor = File::open(descriptor)?;
+        let mut content = String::new();
+
+        descriptor.read_to_string(&mut content)?;
+
+        content.parse()
+    }
 }
 
 impl FromStr for Descriptor {
