@@ -90,7 +90,7 @@ impl Relay {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
     pub relays: Vec<Relay>,
-    bandwidth_weights: HashMap<String, u32>,
+    pub bandwidth_weights: HashMap<String, u32>,
 }
 
 impl Consensus {

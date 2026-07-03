@@ -10,7 +10,7 @@ pub fn compute() -> Result<()> {
     let cache_dir = Path::new("./cache");
     let consensus = Consensus::new(cache_dir, datetime)?;
 
-    for relay in consensus.relays.iter() {
+    for relay in consensus.relays() {
         println!("{}: {}", relay.nickname, relay.bandwidth.average);
     }
 

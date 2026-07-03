@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::File,
     io::Read,
     net::{Ipv4Addr, SocketAddrV6},
@@ -222,21 +223,21 @@ pub struct Relay {
     pub family: Vec<Digest>,
 }
 
-impl From<(&consensus::Relay, &descriptor::Descriptor)> for Relay {
-    fn from((relay, descriptor): (&consensus::Relay, &descriptor::Descriptor)) -> Self {
+impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
+    fn from((relay, descriptor): (consensus::Relay, descriptor::Descriptor)) -> Self {
         Relay {
-            nickname: relay.nickname.clone(),
-            id: relay.id.clone(),
-            digest: relay.digest.clone(),
+            nickname: relay.nickname,
+            id: relay.id,
+            digest: relay.digest,
             ip: relay.ip,
             orport: relay.orport,
             dirport: relay.dirport,
             ipv6: relay.ipv6,
             flags: relay.flags,
-            verison: relay.verison.clone(),
+            verison: relay.verison,
             uptime: descriptor.uptime,
-            bandwidth: descriptor.bandwidth.clone(),
-            family: descriptor.family.clone(),
+            bandwidth: descriptor.bandwidth,
+            family: descriptor.family,
         }
     }
 }
@@ -245,8 +246,8 @@ impl From<(&consensus::Relay, &descriptor::Descriptor)> for Relay {
 pub struct Consensus {
     cache_folder: PathBuf,
     datetime: DateTime<Utc>,
-    pub relays: Vec<Relay>,
-    consensus: consensus::Consensus,
+    relays: Vec<Relay>,
+    bandwidth_weights: HashMap<String, u32>,
 }
 
 impl Consensus {
@@ -269,12 +270,12 @@ impl Consensus {
         let consensus: consensus::Consensus = content.parse()?;
         let relays = consensus
             .relays
-            .iter()
+            .into_iter()
             .filter_map(|relay| {
-                let Ok(desc) = Descriptor::get_descriptor(cache_folder, &datetime, relay) else {
+                let Ok(desc) = Descriptor::get_descriptor(cache_folder, &datetime, &relay) else {
                     return None;
                 };
-                Some((relay, &desc).into())
+                Some((relay, desc).into())
             })
             .collect();
 
@@ -282,7 +283,11 @@ impl Consensus {
             cache_folder: cache_folder.to_path_buf(),
             datetime,
             relays,
-            consensus,
+            bandwidth_weights: consensus.bandwidth_weights,
         })
+    }
+
+    pub fn relays(&self) -> &[Relay] {
+        &self.relays
     }
 }
