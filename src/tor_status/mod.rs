@@ -4,7 +4,6 @@ use std::{
     io::Read,
     net::{Ipv4Addr, SocketAddrV6},
     path::{Path, PathBuf},
-    slice,
     str::FromStr,
 };
 

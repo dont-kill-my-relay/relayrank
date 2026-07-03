@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Relay {

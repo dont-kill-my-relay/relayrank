@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use chrono::{TimeZone, Utc};
 
 use crate::tor_status::Consensus;
