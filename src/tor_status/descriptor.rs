@@ -1,12 +1,10 @@
-use crate::tor_status::consensus;
-
 use super::{Bandwidth, Uptime};
 use std::{fs::File, io::Read, path::Path, str::FromStr};
 
 use super::Digest;
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Datelike, Months, Utc};
 use hex::{FromHex, ToHex};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -30,8 +28,20 @@ impl Descriptor {
         ));
         let descriptor = month_descriptors.join(digest.encode_hex::<String>());
 
-        let mut descriptor = File::open(&descriptor)
-            .with_context(|| format!("unable to find descriptor: {:?}", descriptor))?;
+        let mut descriptor = File::open(&descriptor).or_else(|_| -> Result<File> {
+            let datetime = datetime
+                .checked_sub_months(Months::new(1))
+                .context("unbale to check previous month")?;
+            let month_descriptors = descriptor_folder.join(format!(
+                "server-descriptors-{:04}-{:02}",
+                datetime.year(),
+                datetime.month()
+            ));
+
+            let descriptor = month_descriptors.join(digest.encode_hex::<String>());
+            File::open(&descriptor)
+                .with_context(|| format!("unable to find descriptor: {:?}", descriptor))
+        })?;
         let mut content = String::new();
 
         descriptor.read_to_string(&mut content)?;
