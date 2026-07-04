@@ -20,7 +20,7 @@ impl Descriptor {
     pub fn get_descriptor(
         cache_folder: &Path,
         datetime: &DateTime<Utc>,
-        relay: &consensus::Relay,
+        digest: &Digest,
     ) -> Result<Self> {
         let descriptor_folder = cache_folder.join("relay_descriptors");
         let month_descriptors = descriptor_folder.join(format!(
@@ -28,9 +28,10 @@ impl Descriptor {
             datetime.year(),
             datetime.month()
         ));
-        let descriptor = month_descriptors.join(relay.digest.encode_hex::<String>());
+        let descriptor = month_descriptors.join(digest.encode_hex::<String>());
 
-        let mut descriptor = File::open(descriptor)?;
+        let mut descriptor = File::open(&descriptor)
+            .with_context(|| format!("unable to find descriptor: {:?}", descriptor))?;
         let mut content = String::new();
 
         descriptor.read_to_string(&mut content)?;
@@ -61,7 +62,7 @@ impl FromStr for Descriptor {
                         content
                             .split(" ")
                             .map(|d| Digest::from_hex(&d[1..]))
-                            .collect::<Result<Vec<Digest>>>()?,
+                            .collect::<Result<_>>()?,
                     )
                 }
                 _ => (),

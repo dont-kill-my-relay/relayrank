@@ -272,13 +272,7 @@ impl Consensus {
             .relays
             .into_iter()
             .map(|relay| -> Result<Relay> {
-                let desc = Descriptor::get_descriptor(cache_folder, &datetime, &relay)
-                    .with_context(|| {
-                        format!(
-                            "descriptor not found for {}",
-                            relay.digest.encode_hex::<String>()
-                        )
-                    })?;
+                let desc = Descriptor::get_descriptor(cache_folder, &datetime, &relay.digest)?;
                 Ok((relay, desc).into())
             })
             .collect();
