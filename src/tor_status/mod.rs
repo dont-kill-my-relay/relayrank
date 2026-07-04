@@ -261,7 +261,8 @@ impl Consensus {
             datetime.second()
         );
         let consensus_path = cache_folder.join("consensuses").join(filename);
-        let mut consensus_file = File::open(consensus_path)?;
+        let mut consensus_file = File::open(&consensus_path)
+            .with_context(|| format!("unable to open consensus file: {:?}", consensus_path))?;
         let mut content = String::new();
 
         consensus_file.read_to_string(&mut content)?;
@@ -271,7 +272,13 @@ impl Consensus {
             .relays
             .into_iter()
             .map(|relay| -> Result<Relay> {
-                let desc = Descriptor::get_descriptor(cache_folder, &datetime, &relay)?;
+                let desc = Descriptor::get_descriptor(cache_folder, &datetime, &relay)
+                    .with_context(|| {
+                        format!(
+                            "descriptor not found for {}",
+                            relay.digest.encode_hex::<String>()
+                        )
+                    })?;
                 Ok((relay, desc).into())
             })
             .collect();
