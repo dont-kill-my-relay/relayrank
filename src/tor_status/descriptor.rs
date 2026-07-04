@@ -60,8 +60,8 @@ impl FromStr for Descriptor {
                     family = Some(
                         content
                             .split(" ")
-                            .filter_map(|d| Digest::from_hex(&d[1..]).ok())
-                            .collect(),
+                            .map(|d| Digest::from_hex(&d[1..]))
+                            .collect::<Result<Vec<Digest>>>()?,
                     )
                 }
                 _ => (),

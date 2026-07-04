@@ -267,21 +267,19 @@ impl Consensus {
         consensus_file.read_to_string(&mut content)?;
 
         let consensus: consensus::Consensus = content.parse()?;
-        let relays = consensus
+        let relays: Result<Vec<Relay>> = consensus
             .relays
             .into_iter()
-            .filter_map(|relay| {
-                let Ok(desc) = Descriptor::get_descriptor(cache_folder, &datetime, &relay) else {
-                    return None;
-                };
-                Some((relay, desc).into())
+            .map(|relay| -> Result<Relay> {
+                let desc = Descriptor::get_descriptor(cache_folder, &datetime, &relay)?;
+                Ok((relay, desc).into())
             })
             .collect();
 
         Ok(Self {
             cache_folder: cache_folder.to_path_buf(),
             datetime,
-            relays,
+            relays: relays?,
             bandwidth_weights: consensus.bandwidth_weights,
         })
     }

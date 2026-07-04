@@ -152,11 +152,13 @@ impl Consensus {
             .split_once("\n")
             .context("unable to split bandwidth weights")?;
 
-        Ok(bdw_wght
+        bdw_wght
             .split(" ")
-            .filter_map(|w| w.split_once("="))
-            .map(|(k, v)| (k.to_string(), v.parse().unwrap_or_default()))
-            .collect())
+            .map(|w| {
+                let (k, v) = w.split_once("=").context("context")?;
+                Ok((k.to_string(), v.parse()?))
+            })
+            .collect()
     }
 }
 
