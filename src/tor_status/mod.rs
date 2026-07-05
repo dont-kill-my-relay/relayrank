@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::Read,
     net::{Ipv4Addr, SocketAddrV6},
-    path::{Path, PathBuf},
+    path::Path,
     str::FromStr,
 };
 
@@ -263,8 +263,6 @@ impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
-    cache_folder: PathBuf,
-    datetime: DateTime<Utc>,
     relays: Vec<Relay>,
     bandwidth_weights: HashMap<String, u32>,
 }
@@ -298,8 +296,6 @@ impl Consensus {
             .collect();
 
         Ok(Self {
-            cache_folder: cache_folder.to_path_buf(),
-            datetime,
             relays: relays?,
             bandwidth_weights: consensus.bandwidth_weights,
         })
