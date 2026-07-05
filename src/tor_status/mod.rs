@@ -194,7 +194,7 @@ impl FromStr for Bandwidth {
         let (Some(average), Some(burst), Some(observed)) =
             (parts.next(), parts.next(), parts.next())
         else {
-            bail!("unable to parse bandwidth")
+            bail!(format!("unable to parse bandwidth from: {s:?}"))
         };
 
         Ok(Self {
@@ -202,6 +202,26 @@ impl FromStr for Bandwidth {
             burst: burst.parse()?,
             observed: observed.parse()?,
         })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum FamilyMember {
+    Digest(Digest),
+    Nickname(String),
+}
+
+impl FromStr for FamilyMember {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
+        if let Some(d) = s.strip_prefix("$") {
+            Ok(Self::Digest(Digest::from_hex(d).with_context(|| {
+                format!("unable to parse family member: {s:?}")
+            })?))
+        } else {
+            Ok(Self::Nickname(s.to_string()))
+        }
     }
 }
 
@@ -219,7 +239,7 @@ pub struct Relay {
     pub verison: Version,
     pub uptime: Uptime,
     pub bandwidth: Bandwidth,
-    pub family: Vec<Digest>,
+    pub family: Vec<FamilyMember>,
 }
 
 impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {

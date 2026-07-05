@@ -154,8 +154,11 @@ impl Consensus {
 
         bdw_wght
             .split(" ")
+            .skip(1)
             .map(|w| {
-                let (k, v) = w.split_once("=").context("unable to parse bandwith")?;
+                let (k, v) = w
+                    .split_once("=")
+                    .with_context(|| format!("unable to parse bandwith weights {w:?}"))?;
                 Ok((k.to_string(), v.parse()?))
             })
             .collect()

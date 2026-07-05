@@ -1,17 +1,17 @@
-use super::{Bandwidth, Uptime};
+use super::{Bandwidth, FamilyMember, Uptime};
 use std::{fs::File, io::Read, path::Path, str::FromStr};
 
 use super::Digest;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Months, Utc};
-use hex::{FromHex, ToHex};
+use hex::ToHex;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Descriptor {
     pub uptime: Uptime,
     pub bandwidth: Bandwidth,
-    pub family: Vec<Digest>,
+    pub family: Vec<FamilyMember>,
 }
 
 impl Descriptor {
@@ -56,7 +56,7 @@ impl FromStr for Descriptor {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut uptime: Option<Uptime> = None;
         let mut bandwidth: Option<Bandwidth> = None;
-        let mut family: Option<Vec<Digest>> = None;
+        let mut family: Option<Vec<FamilyMember>> = None;
 
         for line in s.lines() {
             let (start, content) = line.split_once(" ").unwrap_or(("", line));
@@ -71,7 +71,7 @@ impl FromStr for Descriptor {
                     family = Some(
                         content
                             .split(" ")
-                            .map(|d| Digest::from_hex(&d[1..]))
+                            .map(|m| m.parse())
                             .collect::<Result<_>>()?,
                     )
                 }
