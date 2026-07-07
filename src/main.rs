@@ -1,22 +1,36 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
-use clap::Parser;
+use chrono::{DateTime, Utc};
+use clap::{Parser, Subcommand};
 
 mod network_metric;
 mod relay_metric;
 mod tor_status;
 
 #[derive(Parser)]
-enum Args {
+struct Args {
+    #[arg(long, default_value = "./cache")]
+    cache: PathBuf,
+    datetime: DateTime<Utc>,
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
     RelayMetric,
     BuildInference,
-    NetworkMetric,
+    NetworkMetric { mapping_file: PathBuf },
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    match args {
-        Args::BuildInference => todo!("build inference"),
-        Args::NetworkMetric => network_metric::compute(),
-        Args::RelayMetric => todo!("relay metric"),
+    match args.command {
+        Command::BuildInference => todo!("build inference"),
+        Command::NetworkMetric { mapping_file } => {
+            network_metric::compute(&args.cache, args.datetime, &mapping_file)
+        }
+        Command::RelayMetric => todo!("relay metric"),
     }
 }

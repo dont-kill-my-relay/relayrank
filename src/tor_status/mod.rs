@@ -15,13 +15,18 @@ use derive_more::From;
 use hex::{FromHex, ToHex};
 
 use descriptor::Descriptor;
+use serde::{Deserialize, Serialize};
+use serde_with::base64::{Base64, Standard};
+use serde_with::formats::Unpadded;
+use serde_with::serde_as;
 
 mod consensus;
 mod descriptor;
 
 #[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, Clone, From)]
-pub struct RelayId([u8; 20]);
+#[serde_as]
+#[derive(Debug, PartialEq, Eq, Clone, From, Serialize, Deserialize)]
+pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] [u8; 20]);
 
 impl FromStr for RelayId {
     type Err = anyhow::Error;
