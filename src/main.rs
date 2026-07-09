@@ -21,16 +21,20 @@ struct Args {
 enum Command {
     RelayMetric,
     BuildInference,
-    NetworkMetric { mapping_file: PathBuf },
+    NetworkMetric {
+        mapping_file: PathBuf,
+        as_path_file: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     match args.command {
         Command::BuildInference => todo!("build inference"),
-        Command::NetworkMetric { mapping_file } => {
-            network_metric::compute(&args.cache, args.datetime, &mapping_file)
-        }
+        Command::NetworkMetric {
+            mapping_file,
+            as_path_file,
+        } => network_metric::compute(&args.cache, args.datetime, &mapping_file, &as_path_file),
         Command::RelayMetric => todo!("relay metric"),
     }
 }

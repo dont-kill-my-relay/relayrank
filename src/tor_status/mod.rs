@@ -25,7 +25,7 @@ mod descriptor;
 
 #[repr(transparent)]
 #[serde_as]
-#[derive(Debug, PartialEq, Eq, Clone, From, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, From, Hash, Serialize, Deserialize)]
 pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] [u8; 20]);
 
 impl FromStr for RelayId {
@@ -37,7 +37,7 @@ impl FromStr for RelayId {
 }
 
 #[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, Clone, From)]
+#[derive(Debug, PartialEq, Eq, Clone, From, Hash)]
 pub struct Digest([u8; 20]);
 
 impl FromStr for Digest {
@@ -68,7 +68,7 @@ impl ToHex for Digest {
 }
 
 #[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, Clone, From, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, From, Copy, Hash)]
 pub struct Port(u16);
 
 impl FromStr for Port {
@@ -81,7 +81,7 @@ impl FromStr for Port {
 }
 
 bitflags! {
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
     pub struct RelayFlags: u16 {
         const Authority = 0x0001;
         const BadExit = 0x0002;
