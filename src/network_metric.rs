@@ -178,9 +178,14 @@ pub fn compute(
     as_path_file: &Path,
 ) -> Result<()> {
     let consensus = Consensus::new(cache_folder, datetime)?;
-    dbg!("ici");
-    let proba = extract_pag_pae_from_inference(as_path_file, mapping_file)?;
-    dbg!(proba);
+    let (guards_proba, exits_proba) = extract_pag_pae_from_inference(as_path_file, mapping_file)?;
+
+    let all_ases: HashSet<_> = guards_proba
+        .iter()
+        .chain(exits_proba.iter())
+        .flat_map(|(_, ases)| ases.keys())
+        .map(|asn| asn.to_owned())
+        .collect();
 
     Ok(())
 }
