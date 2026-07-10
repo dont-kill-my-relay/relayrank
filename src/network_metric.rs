@@ -9,45 +9,133 @@ use anyhow::{Context, Ok, Result, bail};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::tor_status::{Consensus, Digest, RelayId};
+use crate::tor_status::{Consensus, RelayId};
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Serialize, Deserialize)]
 struct Mapping {
     client_guard: Vec<RelayId>,
     exit_destination: Vec<RelayId>,
 }
 
-type ASObservation = HashMap<RelayId, Vec<HashSet<String>>>;
-type ASCount = HashMap<RelayId, HashMap<String, u32>>;
-type ASPropabilty = HashMap<RelayId, HashMap<String, f32>>;
+type RawObeservation<'a> = (usize, Option<ASes<'a>>, Option<ASes<'a>>);
+type ASes<'a> = HashSet<&'a str>;
+type ASObservations<'a> = Vec<ASes<'a>>;
+type ASCount<'a> = HashMap<&'a str, u32>;
+type ASPropabilty = HashMap<String, f32>;
 
-fn extract_as_path(path: &str) -> Option<HashSet<String>> {
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+struct Inference<'a> {
+    guards: HashMap<&'a RelayId, ASObservations<'a>>,
+    exits: HashMap<&'a RelayId, ASObservations<'a>>,
+}
+
+impl<'a> Inference<'a> {
+    fn add_guard_observation(&mut self, id: &'a RelayId, ases: ASes<'a>) {
+        let observastions = self.guards.entry(id).or_default();
+        observastions.push(ases);
+    }
+
+    fn add_exit_observation(&mut self, id: &'a RelayId, ases: ASes<'a>) {
+        let observastions = self.exits.entry(id).or_default();
+        observastions.push(ases);
+    }
+}
+
+fn split_observations(
+    l: &'_ str,
+    guard_sample: usize,
+    exit_sample: usize,
+) -> Result<(Option<RawObeservation<'_>>, Option<RawObeservation<'_>>)> {
+    let mut parts = l.split(" ");
+    let (Some(_), Some(idx), Some(c2g), Some(g2c), Some(e2d), Some(d2e)) = (
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+    ) else {
+        bail!(format!("unable to parse inference line: {l:?}"))
+    };
+    let idx: usize = idx.parse().with_context(|| format!("invalid id {idx:?}"))?;
+
+    let guard_ases = if idx < guard_sample {
+        let c2g = extract_asn_path(c2g);
+        let g2c = extract_asn_path(g2c);
+        Some((idx, c2g, g2c))
+    } else {
+        None
+    };
+
+    let exit_ases = if idx < exit_sample {
+        let e2d = extract_asn_path(e2d);
+        let d2e = extract_asn_path(d2e);
+        Some((idx, e2d, d2e))
+    } else {
+        None
+    };
+
+    Ok((guard_ases, exit_ases))
+}
+
+fn extract_asn_path(path: &'_ str) -> Option<ASes<'_>> {
     if path == "None" {
         return None;
     }
-
-    Some(path.split("-").map(|asn| asn.to_string()).collect())
+    Some(path.split("-").collect())
 }
 
-fn count_observation(observations: Vec<HashSet<String>>) -> HashMap<String, u32> {
-    observations.into_iter().fold(HashMap::new(), |mut acc, o| {
-        for asn in o {
-            acc.entry(asn).and_modify(|c| *c += 1).or_insert(1);
-        }
-        acc
-    })
+fn fold_observations<'a>(
+    mut inference: Inference<'a>,
+    l: Result<(Option<RawObeservation<'a>>, Option<RawObeservation<'a>>)>,
+    mapping: &'a Mapping,
+) -> Result<Inference<'a>> {
+    let (guard, exit) = l?;
+
+    if let Some((id, c2g, g2c)) = guard {
+        let id = &mapping.client_guard[id];
+        let ases = c2g
+            .unwrap_or_default()
+            .union(&g2c.unwrap_or_default())
+            .copied()
+            .collect();
+        inference.add_guard_observation(id, ases);
+    }
+
+    if let Some((id, e2d, d2e)) = exit {
+        let id = &mapping.exit_destination[id];
+        let ases = e2d
+            .unwrap_or_default()
+            .union(&d2e.unwrap_or_default())
+            .copied()
+            .collect();
+        inference.add_exit_observation(id, ases);
+    }
+
+    Ok(inference)
 }
 
-fn asn_proba(observations: ASObservation) -> ASPropabilty {
+fn count_observation(observations: Vec<ASes<'_>>) -> ASCount<'_> {
     observations
         .into_iter()
-        .map(|(id, v)| {
-            let sample_count: f32 = v.len() as f32;
-            let proba = count_observation(v)
+        .fold(ASCount::new(), |mut count, observation| {
+            for asn in observation {
+                count.entry(asn).and_modify(|c| *c += 1).or_insert(1);
+            }
+            count
+        })
+}
+
+fn asn_proba(observations: HashMap<&'_ RelayId, Vec<ASes>>) -> HashMap<RelayId, ASPropabilty> {
+    observations
+        .into_iter()
+        .map(|(id, count)| {
+            let sample_count: f32 = count.len() as f32;
+            let proba = count_observation(count)
                 .into_iter()
-                .map(|(k, v)| (k, v as f32 / sample_count))
+                .map(|(k, v)| (k.to_string(), v as f32 / sample_count))
                 .collect();
-            (id, proba)
+            (id.clone(), proba)
         })
         .collect()
 }
@@ -55,7 +143,10 @@ fn asn_proba(observations: ASObservation) -> ASPropabilty {
 fn extract_pag_pae_from_inference(
     as_path_file: &Path,
     mapping_file: &Path,
-) -> Result<(ASPropabilty, ASPropabilty)> {
+) -> Result<(
+    HashMap<RelayId, ASPropabilty>,
+    HashMap<RelayId, ASPropabilty>,
+)> {
     let mapping_file = File::open(mapping_file)?;
     let mapping: Mapping = serde_json::from_reader(mapping_file)?;
 
@@ -63,68 +154,21 @@ fn extract_pag_pae_from_inference(
     let mut as_path = String::new();
     as_path_file.read_to_string(&mut as_path)?;
 
-    let (guards_observations, exit_obesarvations) = as_path
+    let inference = as_path
         .lines()
         .skip(1)
         .map(|l| {
-            let mut parts = l.split(" ");
-            let (Some(_), Some(idx), Some(c2g), Some(g2c), Some(e2d), Some(d2e)) = (
-                parts.next(),
-                parts.next(),
-                parts.next(),
-                parts.next(),
-                parts.next(),
-                parts.next(),
-            ) else {
-                bail!(format!("unable to parse inference line: {l:?}"))
-            };
-            let idx: usize = idx.parse().with_context(|| format!("invalid id {idx:?}"))?;
-
-            let guard_ases: Option<(RelayId, HashSet<_>)> = if idx < mapping.client_guard.len() {
-                let c2g = extract_as_path(c2g).unwrap_or_default();
-                let g2c = extract_as_path(g2c).unwrap_or_default();
-                let id: RelayId = mapping.client_guard[idx].clone();
-
-                Some((id, c2g.union(&g2c).cloned().collect()))
-            } else {
-                None
-            };
-
-            let exit_ases: Option<(RelayId, HashSet<_>)> = if idx < mapping.exit_destination.len() {
-                let e2d = extract_as_path(e2d).unwrap_or_default();
-                let d2e = extract_as_path(d2e).unwrap_or_default();
-                let id: RelayId = mapping.exit_destination[idx].clone();
-
-                Some((id, e2d.union(&d2e).cloned().collect()))
-            } else {
-                None
-            };
-
-            Ok((guard_ases, exit_ases))
+            split_observations(
+                l,
+                mapping.client_guard.len(),
+                mapping.exit_destination.len(),
+            )
         })
-        .try_fold(
-            (ASObservation::new(), ASObservation::new()),
-            |(mut guards, mut exits), l| {
-                let (guard_ases, exit_ases) = l?;
+        .try_fold(Inference::default(), |acc, l| {
+            fold_observations(acc, l, &mapping)
+        })?;
 
-                if let Some((id, ases)) = guard_ases {
-                    let observations = guards.entry(id).or_default();
-                    observations.push(ases);
-                }
-
-                if let Some((id, ases)) = exit_ases {
-                    let observations = exits.entry(id).or_default();
-                    observations.push(ases);
-                }
-
-                Ok((guards, exits))
-            },
-        )?;
-
-    Ok((
-        asn_proba(guards_observations),
-        asn_proba(exit_obesarvations),
-    ))
+    Ok((asn_proba(inference.guards), asn_proba(inference.exits)))
 }
 
 pub fn compute(
