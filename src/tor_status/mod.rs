@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::File,
     io::Read,
     net::{Ipv4Addr, SocketAddrV6},
@@ -23,6 +23,8 @@ use serde_with::serde_as;
 mod consensus;
 mod descriptor;
 
+const SAME_SUBNET_MASK: u32 = 0xFFFF0000;
+
 #[repr(transparent)]
 #[serde_as]
 #[derive(Debug, PartialEq, Eq, Clone, From, Hash, Serialize, Deserialize)]
@@ -33,6 +35,25 @@ impl FromStr for RelayId {
 
     fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
         Ok(parse_id(s)?.into())
+    }
+}
+
+impl FromHex for RelayId {
+    type Error = anyhow::Error;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> std::prelude::v1::Result<Self, Self::Error> {
+        let digest = <[u8; 20]>::from_hex(hex)?;
+        Ok(digest.into())
+    }
+}
+
+impl ToHex for RelayId {
+    fn encode_hex<T: std::iter::FromIterator<char>>(&self) -> T {
+        self.0.encode_hex()
+    }
+
+    fn encode_hex_upper<T: std::iter::FromIterator<char>>(&self) -> T {
+        self.0.encode_hex_upper()
     }
 }
 
@@ -211,26 +232,6 @@ impl FromStr for Bandwidth {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum FamilyMember {
-    Digest(Digest),
-    Nickname(String),
-}
-
-impl FromStr for FamilyMember {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
-        if let Some(d) = s.strip_prefix("$") {
-            Ok(Self::Digest(Digest::from_hex(d).with_context(|| {
-                format!("unable to parse family member: {s:?}")
-            })?))
-        } else {
-            Ok(Self::Nickname(s.to_string()))
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Relay {
     pub nickname: String,
     pub id: RelayId,
@@ -244,7 +245,15 @@ pub struct Relay {
     pub verison: Version,
     pub uptime: Uptime,
     pub bandwidth: Bandwidth,
-    pub family: Vec<FamilyMember>,
+    pub family: HashSet<RelayId>,
+}
+
+impl Relay {
+    pub fn reach(&self, other: &Relay) -> bool {
+        (self.ip.to_bits() & SAME_SUBNET_MASK == other.ip.to_bits() & SAME_SUBNET_MASK)
+            && (!other.family.contains(&self.id))
+            && (!self.family.contains(&other.id))
+    }
 }
 
 impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {

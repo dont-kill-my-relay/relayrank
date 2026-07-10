@@ -1,17 +1,19 @@
-use super::{Bandwidth, FamilyMember, Uptime};
-use std::{fs::File, io::Read, path::Path, str::FromStr};
+use crate::tor_status::RelayId;
+
+use super::{Bandwidth, Uptime};
+use std::{collections::HashSet, fs::File, io::Read, path::Path, str::FromStr};
 
 use super::Digest;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Months, Utc};
-use hex::ToHex;
+use hex::{FromHex, ToHex};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Descriptor {
     pub uptime: Uptime,
     pub bandwidth: Bandwidth,
-    pub family: Vec<FamilyMember>,
+    pub family: HashSet<RelayId>,
 }
 
 impl Descriptor {
@@ -56,7 +58,7 @@ impl FromStr for Descriptor {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut uptime: Option<Uptime> = None;
         let mut bandwidth: Option<Bandwidth> = None;
-        let mut family: Option<Vec<FamilyMember>> = None;
+        let mut family: Option<HashSet<RelayId>> = None;
 
         for line in s.lines() {
             let (start, content) = line.split_once(" ").unwrap_or(("", line));
@@ -71,7 +73,8 @@ impl FromStr for Descriptor {
                     family = Some(
                         content
                             .split(" ")
-                            .map(|m| m.parse())
+                            .filter_map(|s| s.strip_prefix("$"))
+                            .map(RelayId::from_hex)
                             .collect::<Result<_>>()?,
                     )
                 }
