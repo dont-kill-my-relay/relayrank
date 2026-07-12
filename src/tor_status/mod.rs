@@ -254,6 +254,18 @@ impl Relay {
             && (!other.family.contains(&self.id))
             && (!self.family.contains(&other.id))
     }
+
+    pub fn is_guard_only(&self) -> bool {
+        self.flags.contains(RelayFlags::Guard) && !self.flags.contains(RelayFlags::Exit)
+    }
+
+    pub fn is_exit_only(&self) -> bool {
+        self.flags.contains(RelayFlags::Guard) && !self.flags.contains(RelayFlags::Exit)
+    }
+
+    pub fn is_dual(&self) -> bool {
+        self.flags.contains(RelayFlags::Guard | RelayFlags::Exit)
+    }
 }
 
 impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
@@ -277,8 +289,8 @@ impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
-    relays: Vec<Relay>,
-    bandwidth_weights: HashMap<String, u32>,
+    pub relays: Vec<Relay>,
+    pub bandwidth_weights: HashMap<String, u32>,
 }
 
 impl Consensus {
@@ -313,9 +325,5 @@ impl Consensus {
             relays: relays?,
             bandwidth_weights: consensus.bandwidth_weights,
         })
-    }
-
-    pub fn relays(&self) -> &[Relay] {
-        &self.relays
     }
 }

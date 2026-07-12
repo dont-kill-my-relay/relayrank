@@ -9,7 +9,7 @@ use anyhow::{Context, Ok, Result, bail};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::tor_status::{Consensus, RelayId};
+use crate::tor_status::{Consensus, Relay, RelayId};
 
 #[derive(Debug, PartialEq, Eq, Clone, Default, Serialize, Deserialize)]
 struct Mapping {
@@ -17,7 +17,7 @@ struct Mapping {
     exit_destination: Vec<RelayId>,
 }
 
-type RawObeservation<'a> = (usize, Option<ASes<'a>>, Option<ASes<'a>>);
+type RawASObeservation<'a> = (usize, Option<ASes<'a>>, Option<ASes<'a>>);
 type ASes<'a> = HashSet<&'a str>;
 type ASObservations<'a> = Vec<ASes<'a>>;
 type ASCount<'a> = HashMap<&'a str, u32>;
@@ -45,7 +45,7 @@ fn split_observations(
     l: &'_ str,
     guard_sample: usize,
     exit_sample: usize,
-) -> Result<(Option<RawObeservation<'_>>, Option<RawObeservation<'_>>)> {
+) -> Result<(Option<RawASObeservation<'_>>, Option<RawASObeservation<'_>>)> {
     let mut parts = l.split(" ");
     let (Some(_), Some(idx), Some(c2g), Some(g2c), Some(e2d), Some(d2e)) = (
         parts.next(),
@@ -87,7 +87,7 @@ fn extract_asn_path(path: &'_ str) -> Option<ASes<'_>> {
 
 fn fold_observations<'a>(
     mut inference: Inference<'a>,
-    l: Result<(Option<RawObeservation<'a>>, Option<RawObeservation<'a>>)>,
+    l: Result<(Option<RawASObeservation<'a>>, Option<RawASObeservation<'a>>)>,
     mapping: &'a Mapping,
 ) -> Result<Inference<'a>> {
     let (guard, exit) = l?;
@@ -187,5 +187,49 @@ pub fn compute(
         .map(|asn| asn.to_owned())
         .collect();
 
+    let guards: Vec<_> = consensus
+        .relays
+        .iter()
+        .filter(|r| r.is_guard_only())
+        .collect();
+
+    let exits: Vec<_> = consensus
+        .relays
+        .iter()
+        .filter(|r| r.is_exit_only())
+        .collect();
+
+    let duals: Vec<_> = consensus.relays.iter().filter(|r| r.is_dual()).collect();
+
+    let guards_metric: Vec<(&Relay, f32)> = guards
+        .iter()
+        .map(|r| (*r, guard_metric(r, &consensus.bandwidth_weights)))
+        .collect();
+    let exits_metric: Vec<(&Relay, f32)> = exits
+        .iter()
+        .map(|r| (*r, exit_metric(r, &consensus.bandwidth_weights)))
+        .collect();
+    let duals_metric: Vec<(&Relay, f32)> = duals
+        .iter()
+        .map(|r| (*r, dual_metric(r, &consensus.bandwidth_weights)))
+        .collect();
+
     Ok(())
+}
+
+fn guard_metric(guard: &Relay, bandwidth_weights: &HashMap<String, u32>) -> f32 {
+    let bandwidth_weight = *(bandwidth_weights
+        .get("Wgg")
+        .expect("Wgg is not in the bandwidth weigths"));
+    let guard_bandwidth = (guard.bandwidth.observed as f32) / 1000.0 * bandwidth_weight as f32;
+
+    todo!()
+}
+
+fn exit_metric(exit: &Relay, bandwidth_weights: &HashMap<String, u32>) -> f32 {
+    todo!()
+}
+
+fn dual_metric(dual: &Relay, bandwidth_weights: &HashMap<String, u32>) -> f32 {
+    todo!()
 }
