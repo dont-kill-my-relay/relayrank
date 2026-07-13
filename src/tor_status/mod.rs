@@ -255,38 +255,38 @@ impl Relay {
             && (!self.family.contains(&other.id))
     }
 
-    pub fn is_guard_only(&self) -> bool {
-        self.flags.contains(RelayFlags::Guard) && !self.flags.contains(RelayFlags::Exit)
+    pub fn is_guard(&self) -> bool {
+        self.flags.contains(RelayFlags::Guard)
     }
 
-    pub fn is_exit_only(&self) -> bool {
-        self.flags.contains(RelayFlags::Guard) && !self.flags.contains(RelayFlags::Exit)
+    pub fn is_exit(&self) -> bool {
+        self.flags.contains(RelayFlags::Exit)
     }
 
     pub fn is_dual(&self) -> bool {
         self.flags.contains(RelayFlags::Guard | RelayFlags::Exit)
     }
 
-    pub fn bwe(&self, bandwidth_weights: &HashMap<String, u32>) -> f32 {
+    pub fn bwe(&self, bandwidth_weights: &BandwithWeights) -> f32 {
         let bw = self.bandwidth.observed as f32 / 1000.0;
         if self.is_dual() {
             return bw * *bandwidth_weights.get("Wed").expect("Wed not found") as f32;
         }
 
-        if self.is_exit_only() {
+        if self.is_exit() {
             return bw * *bandwidth_weights.get("Wee").expect("Wee not found") as f32;
         }
 
         0.0
     }
 
-    pub fn bwg(&self, bandwidth_weights: &HashMap<String, u32>) -> f32 {
+    pub fn bwg(&self, bandwidth_weights: &BandwithWeights) -> f32 {
         let bw = self.bandwidth.observed as f32 / 1000.0;
         if self.is_dual() {
             return bw * *bandwidth_weights.get("Wgd").expect("Wgd not found") as f32;
         }
 
-        if self.is_exit_only() {
+        if self.is_guard() {
             return bw * *bandwidth_weights.get("Wgg").expect("Wgg not found") as f32;
         }
 
@@ -313,10 +313,12 @@ impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
     }
 }
 
+pub type BandwithWeights = HashMap<String, u32>;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
     pub relays: Vec<Relay>,
-    pub bandwidth_weights: HashMap<String, u32>,
+    pub bandwidth_weights: BandwithWeights,
 }
 
 impl Consensus {

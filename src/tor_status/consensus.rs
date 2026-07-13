@@ -1,6 +1,7 @@
+use crate::tor_status::BandwithWeights;
+
 use super::{Digest, Port, RelayFlags, RelayId, Version};
 use std::{
-    collections::HashMap,
     net::{Ipv4Addr, SocketAddrV6},
     str::FromStr,
 };
@@ -90,7 +91,7 @@ impl Relay {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Consensus {
     pub relays: Vec<Relay>,
-    pub bandwidth_weights: HashMap<String, u32>,
+    pub bandwidth_weights: BandwithWeights,
 }
 
 impl Consensus {
@@ -144,7 +145,7 @@ impl Consensus {
         }
     }
 
-    fn parse_footer(s: &str) -> Result<HashMap<String, u32>> {
+    fn parse_footer(s: &str) -> Result<BandwithWeights> {
         let (_, rest) = s
             .split_once("\n")
             .context("unable to skip directory footer")?;
