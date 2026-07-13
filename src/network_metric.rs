@@ -171,6 +171,10 @@ fn extract_pag_pae_from_inference(
     Ok((asn_proba(inference.guards), asn_proba(inference.exits)))
 }
 
+fn peg<'a>(exits: &'_ [&'a Relay], guard: &'_ Relay) -> HashMap<&'a Relay, f32> {
+    todo!()
+}
+
 pub fn compute(
     cache_folder: &Path,
     datetime: DateTime<Utc>,
@@ -201,18 +205,18 @@ pub fn compute(
 
     let duals: Vec<_> = consensus.relays.iter().filter(|r| r.is_dual()).collect();
 
-    let guards_metric: Vec<(&Relay, f32)> = guards
-        .iter()
-        .map(|r| (*r, guard_metric(r, &consensus.bandwidth_weights)))
-        .collect();
-    let exits_metric: Vec<(&Relay, f32)> = exits
-        .iter()
-        .map(|r| (*r, exit_metric(r, &consensus.bandwidth_weights)))
-        .collect();
-    let duals_metric: Vec<(&Relay, f32)> = duals
-        .iter()
-        .map(|r| (*r, dual_metric(r, &consensus.bandwidth_weights)))
-        .collect();
+    // let guards_metric: Vec<(&Relay, f32)> = guards
+    //     .iter()
+    //     .map(|r| (*r, guard_metric(r, &consensus.bandwidth_weights)))
+    //     .collect();
+    // let exits_metric: Vec<(&Relay, f32)> = exits
+    //     .iter()
+    //     .map(|r| (*r, exit_metric(r, &consensus.bandwidth_weights)))
+    //     .collect();
+    // let duals_metric: Vec<(&Relay, f32)> = duals
+    //     .iter()
+    //     .map(|r| (*r, dual_metric(r, &consensus.bandwidth_weights)))
+    //     .collect();
 
     Ok(())
 }
