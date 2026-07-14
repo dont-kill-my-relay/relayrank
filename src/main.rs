@@ -24,6 +24,7 @@ enum Command {
     NetworkMetric {
         mapping_file: PathBuf,
         as_path_file: PathBuf,
+        exclusion_list: Option<PathBuf>,
     },
 }
 
@@ -34,7 +35,14 @@ fn main() -> Result<()> {
         Command::NetworkMetric {
             mapping_file,
             as_path_file,
-        } => network_metric::compute(&args.cache, args.datetime, &mapping_file, &as_path_file),
+            exclusion_list,
+        } => network_metric::compute(
+            &args.cache,
+            args.datetime,
+            &mapping_file,
+            &as_path_file,
+            &exclusion_list,
+        ),
         Command::RelayMetric => todo!("relay metric"),
     }
 }

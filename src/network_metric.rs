@@ -2,11 +2,12 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::Read,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Ok, Result, bail};
 use chrono::{DateTime, Utc};
+use hex::FromHex;
 use serde::{Deserialize, Serialize};
 
 use crate::tor_status::{BandwithWeights, Consensus, Relay, RelayId};
@@ -41,6 +42,14 @@ impl<'a> Inference<'a> {
         let observastions = self.exits.entry(id).or_default();
         observastions.push(ases);
     }
+}
+
+fn parse_exclusion_list(exclusion_list: &Path) -> Result<Vec<RelayId>> {
+    let mut exclusion_file = File::open(exclusion_list)?;
+    let mut content = String::new();
+    exclusion_file.read_to_string(&mut content)?;
+
+    content.lines().map(RelayId::from_hex).collect()
 }
 
 fn split_observations(
@@ -384,6 +393,7 @@ pub fn compute(
     datetime: DateTime<Utc>,
     mapping_file: &Path,
     as_path_file: &Path,
+    exclusion_list: &Option<PathBuf>,
 ) -> Result<()> {
     let consensus = Consensus::new(cache_folder, datetime)?;
     let (pag, pae) = extract_pag_pae_from_inference(as_path_file, mapping_file)?;
@@ -400,7 +410,7 @@ pub fn compute(
         .map(|asn| asn.to_owned())
         .collect();
 
-    let metric: Vec<_> = consensus
+    let mut metric: Vec<_> = consensus
         .relays
         .iter()
         .filter_map(|relay| {
@@ -448,10 +458,32 @@ pub fn compute(
                 None
             }
         })
+        .map(|(r, m)| (r, (m * 1000.0) as u32))
         .collect();
 
-    for (r, metric) in metric {
-        println!("{}: {}", r.nickname, metric * 1000.0);
+    metric.sort_by_key(|(_, m)| *m);
+    metric.reverse();
+
+    let metric: Vec<_> = if let Some(exclusion_list) = exclusion_list {
+        let excluded = parse_exclusion_list(exclusion_list)?;
+        metric
+            .iter()
+            .enumerate()
+            .filter(|(_, (r, _))| excluded.contains(&r.id))
+            .collect()
+    } else {
+        metric.iter().enumerate().collect()
+    };
+
+    for (position, (relay, metric)) in metric {
+        println!(
+            "{},{},guard={},exit={},{}",
+            position,
+            relay.nickname,
+            relay.is_guard(),
+            relay.is_exit(),
+            metric
+        );
     }
 
     Ok(())
