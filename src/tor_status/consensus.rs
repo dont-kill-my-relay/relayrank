@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Relay {
@@ -19,6 +19,7 @@ pub struct Relay {
     pub dirport: Port,
     pub ipv6: Option<SocketAddrV6>,
     pub flags: RelayFlags,
+    pub bandwidth: u32,
     pub verison: Version,
 }
 
@@ -33,6 +34,7 @@ impl Relay {
         let mut ipv6: Option<SocketAddrV6> = None;
         let mut flags: Option<RelayFlags> = None;
         let mut version: Option<Version> = None;
+        let mut bandwidth: Option<u32> = None;
 
         let mut s = s;
         loop {
@@ -59,6 +61,16 @@ impl Relay {
                 "a" => ipv6 = Some(content.parse()?),
                 "s" => flags = Some(Self::parse_flags(content)?),
                 "v" => version = Some(content.parse()?),
+                "w" => {
+                    let (content, _) = content.split_once(" ").unwrap_or((content, ""));
+                    let Some((_, bdw)) = content.split_once("=") else {
+                        bail!("unable to parse bandwith")
+                    };
+                    bandwidth =
+                        Some(bdw.parse().with_context(|| {
+                            format!("unable to parse bandwidth: {:?}", content)
+                        })?);
+                }
                 "p" => {
                     let relay = Self {
                         nickname: nickname.context("nickname was not provided")?,
@@ -70,6 +82,7 @@ impl Relay {
                         ipv6,
                         flags: flags.context("flags were not provided")?,
                         verison: version.context("version was not provided")?,
+                        bandwidth: bandwidth.context("bandwidth was not provided")?,
                     };
                     return Ok((relay, rest));
                 }

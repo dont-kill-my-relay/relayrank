@@ -6,8 +6,10 @@ use std::{
 };
 
 use anyhow::{Context, Ok, Result, bail};
+use base64::prelude::*;
 use chrono::{DateTime, Utc};
 use hex::FromHex;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::tor_status::{BandwithWeights, Consensus, Relay, RelayId};
@@ -18,7 +20,7 @@ struct Mapping {
     exit_destination: Vec<RelayId>,
 }
 
-type Probability<EVENT> = HashMap<EVENT, f32>;
+type Probability<EVENT> = HashMap<EVENT, f64>;
 type ConditionnalProbability<EVENT, CODITION> = HashMap<CODITION, Probability<EVENT>>;
 
 type RawASObeservation<'a> = (usize, Option<ASes<'a>>, Option<ASes<'a>>);
@@ -143,10 +145,10 @@ fn asn_proba(
     observations
         .into_iter()
         .map(|(id, count)| {
-            let sample_count: f32 = count.len() as f32;
+            let sample_count: f64 = count.len() as f64;
             let proba = count_observation(count)
                 .into_iter()
-                .map(|(k, v)| (k.to_string(), v as f32 / sample_count))
+                .map(|(k, v)| (k.to_string(), v as f64 / sample_count))
                 .collect();
             (id.clone(), proba)
         })
@@ -192,7 +194,7 @@ pub fn peg<'a>(
         .iter()
         .filter(|guard| guard.is_guard())
         .map(|guard| {
-            let sum: f32 = relays
+            let sum: f64 = relays
                 .iter()
                 .filter(|e| e.is_exit() && guard.reach(e))
                 .map(|e| e.bwe(bandwidth_weights))
@@ -200,7 +202,10 @@ pub fn peg<'a>(
             let exits: Probability<&RelayId> = relays
                 .iter()
                 .filter(|e| e.is_exit() && guard.reach(e))
-                .map(|e| (&e.id, e.bwe(bandwidth_weights) / sum))
+                .map(|e| {
+                    let proba = e.bwe(bandwidth_weights) / sum;
+                    (&e.id, proba)
+                })
                 .collect();
             (&guard.id, exits)
         })
@@ -211,7 +216,7 @@ pub fn pg<'a>(
     relays: &'a [Relay],
     bandwidth_weights: &BandwithWeights,
 ) -> Probability<&'a RelayId> {
-    let sum: f32 = relays
+    let sum: f64 = relays
         .iter()
         .filter(|r| r.is_guard())
         .map(|g| g.bwg(bandwidth_weights))
@@ -232,7 +237,7 @@ pub fn pe<'a>(
         .iter()
         .filter(|exit| exit.is_exit())
         .map(|exit| {
-            let proba: f32 = relays
+            let proba: f64 = relays
                 .iter()
                 .filter(|guard| guard.is_guard() && exit.reach(guard)) //TODO: remove reach ??
                 .map(|guard| {
@@ -261,7 +266,6 @@ pub fn pge<'a>(
         .filter(|exit| exit.is_exit())
         .map(|exit| {
             let pe = pe.get(&exit.id).expect("exit should be in pe");
-
             let proba: Probability<&RelayId> = relays
                 .iter()
                 .filter(|guard| guard.is_guard() && guard.reach(exit))
@@ -286,20 +290,26 @@ fn page(
     relays: &[Relay],
     pag: &ConditionnalProbability<String, RelayId>,
     pge: &ConditionnalProbability<&RelayId, &RelayId>,
-) -> f32 {
+) -> f64 {
     debug_assert!(exit.is_exit());
     relays
         .iter()
         .filter(|guard| guard.is_guard() && exit.reach(guard))
         .filter_map(|guard| {
-            let pag = pag.get(&guard.id).and_then(|pa| pa.get(asn));
-            Some(
-                pag? * pge
-                    .get(&exit.id)
-                    .expect("exit should be in pge")
-                    .get(&guard.id)
-                    .expect("guard should be in pge"),
-            )
+            let pag = pag
+                .get(&guard.id)
+                .expect("guard should be in pag")
+                .get(asn)?;
+            if *pag == 0.0 {
+                return Some(0.0);
+            }
+            let pge = pge
+                .get(&exit.id)
+                .expect("exit should be in pge")
+                .get(&guard.id)
+                .expect("guard should be in pge");
+            debug_assert!(!pag.is_nan(), "{pag}");
+            Some(pag * pge)
         })
         .sum()
 }
@@ -310,20 +320,23 @@ fn paeg(
     relays: &[Relay],
     pae: &ConditionnalProbability<String, RelayId>,
     peg: &ConditionnalProbability<&RelayId, &RelayId>,
-) -> f32 {
+) -> f64 {
     debug_assert!(guard.is_guard());
     relays
         .iter()
         .filter(|exit| exit.is_exit() && guard.reach(exit))
         .filter_map(|exit| {
-            let pae = pae.get(&exit.id).and_then(|pa| pa.get(asn));
-            Some(
-                pae? * peg
-                    .get(&guard.id)
-                    .expect("guard should be in peg")
-                    .get(&exit.id)
-                    .expect("exit should be in peg"),
-            )
+            let pae = pae.get(&exit.id).expect("exit should be in pae").get(asn)?;
+            if *pae == 0.0 {
+                return Some(0.0);
+            }
+            let peg = peg
+                .get(&guard.id)
+                .expect("guard should be in peg")
+                .get(&exit.id)
+                .expect("exit should be in peg");
+            debug_assert!(!pae.is_nan(), "{pae}");
+            Some(pae * peg)
         })
         .sum()
 }
@@ -336,17 +349,17 @@ fn guard_metric(
     pae: &ConditionnalProbability<String, RelayId>,
     peg: &ConditionnalProbability<&RelayId, &RelayId>,
     bandwidth_weights: &BandwithWeights,
-) -> f32 {
+) -> f64 {
     debug_assert!(guard.is_guard());
     let bw = guard.bwg(bandwidth_weights);
-    let product: f32 = ases
+    let product: f64 = ases
         .iter()
         .filter_map(|asn| {
-            let pag = pag.get(&guard.id).and_then(|pa| pa.get(asn));
+            let pag = pag.get(&guard.id).expect("guard shoul be in pag").get(asn);
             Some(1.0 - (pag? * paeg(asn, guard, relays, pae, peg)))
         })
         .product();
-    debug_assert!(product != 0.0);
+    debug_assert!(product.is_normal(), "guard_metric = {product}");
     bw * product
 }
 
@@ -358,17 +371,17 @@ fn exit_metric(
     pag: &ConditionnalProbability<String, RelayId>,
     pge: &ConditionnalProbability<&RelayId, &RelayId>,
     bandwidth_weights: &BandwithWeights,
-) -> f32 {
+) -> f64 {
     debug_assert!(exit.is_exit());
     let bw = exit.bwe(bandwidth_weights);
-    let product: f32 = ases
+    let product: f64 = ases
         .iter()
         .filter_map(|asn| {
-            let pae = pae.get(&exit.id).and_then(|pa| pa.get(asn));
+            let pae = pae.get(&exit.id).expect("exit should be in pae").get(asn);
             Some(1.0 - (pae? * page(asn, exit, relays, pag, pge)))
         })
         .product();
-    debug_assert!(product != 0.0);
+    debug_assert!(product.is_normal(), "exit_metric = {product}");
     bw * product
 }
 
@@ -381,7 +394,7 @@ fn dual_metric(
     pge: &ConditionnalProbability<&RelayId, &RelayId>,
     peg: &ConditionnalProbability<&RelayId, &RelayId>,
     bandwidth_weights: &BandwithWeights,
-) -> f32 {
+) -> f64 {
     debug_assert!(dual.is_dual());
     let as_guard = guard_metric(dual, ases, relays, pag, pae, peg, bandwidth_weights);
     let as_exit = exit_metric(dual, ases, relays, pae, pag, pge, bandwidth_weights);
@@ -410,9 +423,9 @@ pub fn compute(
         .map(|asn| asn.to_owned())
         .collect();
 
-    let mut metric: Vec<_> = consensus
+    let metric: Vec<_> = consensus
         .relays
-        .iter()
+        .par_iter()
         .filter_map(|relay| {
             if relay.is_dual() {
                 Some((
@@ -458,11 +471,11 @@ pub fn compute(
                 None
             }
         })
-        .map(|(r, m)| (r, (m * 1000.0) as u32))
+        .map(|(r, m)| (r, m))
         .collect();
 
-    metric.sort_by_key(|(_, m)| *m);
-    metric.reverse();
+    // metric.sort_by_key(|(_, m)| *m);
+    // metric.reverse();
 
     let metric: Vec<_> = if let Some(exclusion_list) = exclusion_list {
         let excluded = parse_exclusion_list(exclusion_list)?;
@@ -477,12 +490,11 @@ pub fn compute(
 
     for (position, (relay, metric)) in metric {
         println!(
-            "{},{},guard={},exit={},{}",
+            "{},{},{},{}",
             position,
             relay.nickname,
-            relay.is_guard(),
-            relay.is_exit(),
-            metric
+            BASE64_STANDARD_NO_PAD.encode(relay.id.0),
+            metric,
         );
     }
 

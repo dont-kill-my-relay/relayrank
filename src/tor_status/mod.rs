@@ -28,7 +28,7 @@ const SAME_SUBNET_MASK: u32 = 0xFFFF0000;
 #[repr(transparent)]
 #[serde_as]
 #[derive(Debug, PartialEq, Eq, Clone, From, Hash, Serialize, Deserialize)]
-pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] [u8; 20]);
+pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] pub [u8; 20]);
 
 impl FromStr for RelayId {
     type Err = anyhow::Error;
@@ -244,13 +244,14 @@ pub struct Relay {
     pub flags: RelayFlags,
     pub verison: Version,
     pub uptime: Uptime,
+    pub consensus_bandwith: u32,
     pub bandwidth: Bandwidth,
     pub family: HashSet<RelayId>,
 }
 
 impl Relay {
     pub fn reach(&self, other: &Relay) -> bool {
-        (self.ip.to_bits() & SAME_SUBNET_MASK == other.ip.to_bits() & SAME_SUBNET_MASK)
+        (self.ip.to_bits() & SAME_SUBNET_MASK != other.ip.to_bits() & SAME_SUBNET_MASK)
             && (!other.family.contains(&self.id))
             && (!self.family.contains(&other.id))
     }
@@ -267,27 +268,27 @@ impl Relay {
         self.flags.contains(RelayFlags::Guard | RelayFlags::Exit)
     }
 
-    pub fn bwe(&self, bandwidth_weights: &BandwithWeights) -> f32 {
-        let bw = self.bandwidth.observed as f32 / 1000.0;
+    pub fn bwe(&self, bandwidth_weights: &BandwithWeights) -> f64 {
+        let bw = self.consensus_bandwith as f64 / 1000.0;
         if self.is_dual() {
-            return bw * *bandwidth_weights.get("Wed").expect("Wed not found") as f32;
+            return bw * *bandwidth_weights.get("Wed").expect("Wed not found") as f64;
         }
 
         if self.is_exit() {
-            return bw * *bandwidth_weights.get("Wee").expect("Wee not found") as f32;
+            return bw * *bandwidth_weights.get("Wee").expect("Wee not found") as f64;
         }
 
         0.0
     }
 
-    pub fn bwg(&self, bandwidth_weights: &BandwithWeights) -> f32 {
-        let bw = self.bandwidth.observed as f32 / 1000.0;
+    pub fn bwg(&self, bandwidth_weights: &BandwithWeights) -> f64 {
+        let bw = self.consensus_bandwith as f64 / 1000.0;
         if self.is_dual() {
-            return bw * *bandwidth_weights.get("Wgd").expect("Wgd not found") as f32;
+            return bw * *bandwidth_weights.get("Wgd").expect("Wgd not found") as f64;
         }
 
         if self.is_guard() {
-            return bw * *bandwidth_weights.get("Wgg").expect("Wgg not found") as f32;
+            return bw * *bandwidth_weights.get("Wgg").expect("Wgg not found") as f64;
         }
 
         0.0
@@ -307,6 +308,7 @@ impl From<(consensus::Relay, descriptor::Descriptor)> for Relay {
             flags: relay.flags,
             verison: relay.verison,
             uptime: descriptor.uptime,
+            consensus_bandwith: relay.bandwidth,
             bandwidth: descriptor.bandwidth,
             family: descriptor.family,
         }
