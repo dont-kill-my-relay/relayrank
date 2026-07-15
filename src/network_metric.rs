@@ -298,7 +298,7 @@ fn page(
             let pag = pag
                 .get(&guard.id)
                 .expect("guard should be in pag")
-                .get(asn)?;
+             position   .get(asn)?;
             if *pag == 0.0 {
                 return Some(0.0);
             }
@@ -389,11 +389,6 @@ fn exit_metric(
             Some(1.0 - (pae * page))
         })
         .product();
-    debug_assert!(
-        !(bw * product).is_nan(),
-        "exit_metric = {bw} * {product} = {}",
-        bw * product
-    );
     bw * product
 }
 
@@ -435,7 +430,7 @@ pub fn compute(
         .map(|asn| asn.to_owned())
         .collect();
 
-    let metric: Vec<_> = consensus
+    let mut metric: Vec<_> = consensus
         .relays
         .par_iter()
         .filter_map(|relay| {
@@ -486,24 +481,23 @@ pub fn compute(
         .map(|(r, m)| (r, m))
         .collect();
 
-    // metric.sort_by_key(|(_, m)| *m);
-    // metric.reverse();
+    metric.sort_by(|(_, m), (_, o)| m.total_cmp(o));
+    metric.reverse();
+    let iterator = metric.iter().enumerate().map(|(i, (r, m))| (i + 1, r, m));
 
     let metric: Vec<_> = if let Some(exclusion_list) = exclusion_list {
         let excluded = parse_exclusion_list(exclusion_list)?;
-        metric
-            .iter()
-            .enumerate()
-            .filter(|(_, (r, _))| excluded.contains(&r.id))
+        iterator
+            .filter(|(_, r, _)| excluded.contains(&r.id))
             .collect()
     } else {
-        metric.iter().enumerate().collect()
+        iterator.collect()
     };
 
-    for (position, (relay, metric)) in metric {
+    for (ranking, relay, metric) in metric {
         println!(
             "{},{},{},{}",
-            position,
+            ranking,
             relay.nickname,
             relay.fingerprint(),
             metric,
