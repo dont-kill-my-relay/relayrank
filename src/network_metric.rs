@@ -298,7 +298,7 @@ fn page(
             let pag = pag
                 .get(&guard.id)
                 .expect("guard should be in pag")
-             position   .get(asn)?;
+                .get(asn)?;
             if *pag == 0.0 {
                 return Some(0.0);
             }
