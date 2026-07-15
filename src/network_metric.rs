@@ -6,12 +6,13 @@ use std::{
 };
 
 use anyhow::{Context, Ok, Result, bail};
-use chrono::{DateTime, Utc};
-use hex::FromHex;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::tor_status::{BandwithWeights, Consensus, Relay, RelayId};
+use crate::{
+    parse_exclusion_list,
+    tor_status::{BandwithWeights, Consensus, Relay, RelayId},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Default, Serialize, Deserialize)]
 struct Mapping {
@@ -43,14 +44,6 @@ impl<'a> Inference<'a> {
         let observastions = self.exits.entry(id).or_default();
         observastions.push(ases);
     }
-}
-
-fn parse_exclusion_list(exclusion_list: &Path) -> Result<Vec<RelayId>> {
-    let mut exclusion_file = File::open(exclusion_list)?;
-    let mut content = String::new();
-    exclusion_file.read_to_string(&mut content)?;
-
-    content.lines().map(RelayId::from_hex).collect()
 }
 
 fn split_observations(
@@ -409,13 +402,11 @@ fn dual_metric(
 }
 
 pub fn compute(
-    cache_folder: &Path,
-    datetime: DateTime<Utc>,
+    consensus: &Consensus,
     mapping_file: &Path,
     as_path_file: &Path,
     exclusion_list: &Option<PathBuf>,
 ) -> Result<()> {
-    let consensus = Consensus::new(cache_folder, datetime)?;
     let (pag, pae) = extract_pag_pae_from_inference(as_path_file, mapping_file)?;
 
     let pg = pg(&consensus.relays, &consensus.bandwidth_weights);
