@@ -28,7 +28,7 @@ const SAME_SUBNET_MASK: u32 = 0xFFFF0000;
 #[repr(transparent)]
 #[serde_as]
 #[derive(Debug, PartialEq, Eq, Clone, From, Hash, Serialize, Deserialize)]
-pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] pub [u8; 20]);
+pub struct RelayId(#[serde_as(as = "Base64<Standard, Unpadded>")] [u8; 20]);
 
 impl FromStr for RelayId {
     type Err = anyhow::Error;
@@ -250,6 +250,10 @@ pub struct Relay {
 }
 
 impl Relay {
+    pub fn fingerprint(&self) -> String {
+        BASE64_STANDARD_NO_PAD.encode(self.id.0)
+    }
+
     pub fn reach(&self, other: &Relay) -> bool {
         (self.ip.to_bits() & SAME_SUBNET_MASK != other.ip.to_bits() & SAME_SUBNET_MASK)
             && (!other.family.contains(&self.id))

@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::{Context, Ok, Result, bail};
-use base64::prelude::*;
 use chrono::{DateTime, Utc};
 use hex::FromHex;
 use rayon::prelude::*;
@@ -355,11 +354,19 @@ fn guard_metric(
     let product: f64 = ases
         .iter()
         .filter_map(|asn| {
-            let pag = pag.get(&guard.id).expect("guard shoul be in pag").get(asn);
-            Some(1.0 - (pag? * paeg(asn, guard, relays, pae, peg)))
+            let pag = pag
+                .get(&guard.id)
+                .expect("guard should be in pag")
+                .get(asn)?;
+            let paeg = paeg(asn, guard, relays, pae, peg);
+            Some(1.0 - (pag * paeg))
         })
         .product();
-    debug_assert!(product.is_normal(), "guard_metric = {product}");
+    debug_assert!(
+        !(bw * product).is_nan(),
+        "guard_metric = {bw} * {product} = {}",
+        bw * product
+    );
     bw * product
 }
 
@@ -377,11 +384,16 @@ fn exit_metric(
     let product: f64 = ases
         .iter()
         .filter_map(|asn| {
-            let pae = pae.get(&exit.id).expect("exit should be in pae").get(asn);
-            Some(1.0 - (pae? * page(asn, exit, relays, pag, pge)))
+            let pae = pae.get(&exit.id).expect("exit should be in pae").get(asn)?;
+            let page = page(asn, exit, relays, pag, pge);
+            Some(1.0 - (pae * page))
         })
         .product();
-    debug_assert!(product.is_normal(), "exit_metric = {product}");
+    debug_assert!(
+        !(bw * product).is_nan(),
+        "exit_metric = {bw} * {product} = {}",
+        bw * product
+    );
     bw * product
 }
 
@@ -493,7 +505,7 @@ pub fn compute(
             "{},{},{},{}",
             position,
             relay.nickname,
-            BASE64_STANDARD_NO_PAD.encode(relay.id.0),
+            relay.fingerprint(),
             metric,
         );
     }
