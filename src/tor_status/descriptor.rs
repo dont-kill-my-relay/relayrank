@@ -90,6 +90,11 @@ impl FromStr for Descriptor {
     }
 }
 
+#[cfg(feature = "bench")]
+pub mod bench_utils {
+    pub use super::Descriptor;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

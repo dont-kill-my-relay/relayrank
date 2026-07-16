@@ -1,27 +1,9 @@
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-use hex::FromHex;
-
-use crate::tor_status::{Consensus, RelayId};
-
-mod network_metric;
-mod relay_metric;
-mod tor_status;
-
-fn parse_exclusion_list(exclusion_list: &Path) -> Result<Vec<RelayId>> {
-    let mut exclusion_file = File::open(exclusion_list)?;
-    let mut content = String::new();
-    exclusion_file.read_to_string(&mut content)?;
-
-    content.lines().map(RelayId::from_hex).collect()
-}
+use relay_rank::{network_metric, relay_metric, tor_status::Consensus};
 
 #[derive(Parser)]
 struct Args {

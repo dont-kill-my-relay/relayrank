@@ -361,3 +361,9 @@ impl Consensus {
         })
     }
 }
+
+#[cfg(feature = "bench")]
+pub mod bench_utils {
+    pub use super::consensus::bench_utils as consensus;
+    pub use super::descriptor::bench_utils as descriptor;
+}

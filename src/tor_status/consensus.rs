@@ -195,6 +195,11 @@ impl FromStr for Consensus {
     }
 }
 
+#[cfg(feature = "bench")]
+pub mod bench_utils {
+    pub use super::Consensus;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

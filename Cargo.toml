@@ -1,7 +1,11 @@
 [package]
-name = "RelayRank"
+name = "relay-rank"
 version = "0.1.0"
 edition = "2024"
+
+[features]
+# default = ["bench"]
+bench = []
 
 [dependencies]
 anyhow = "1.0.102"
@@ -16,5 +20,18 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 serde_with = { version = "3.21.0", features = ["base64"] }
 
+[dev-dependencies]
+criterion = "0.8.2"
+
 [profile.bench]
 debug = true
+
+[[bench]]
+name = "consensus_parse"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "descriptor_parse"
+harness = false
+required-features = ["bench"]
