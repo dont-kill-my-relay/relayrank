@@ -121,10 +121,11 @@ pub fn compute(consensus: &Consensus, exclusion_list: &Option<PathBuf>) -> Resul
 
     for (ranking, relay, metric) in metric {
         println!(
-            "{},{},{},{}",
+            "{},{},{},{},{}",
             ranking,
             relay.nickname,
             relay.fingerprint(),
+            relay.ip,
             metric,
         );
     }

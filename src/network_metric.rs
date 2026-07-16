@@ -487,10 +487,12 @@ pub fn compute(
 
     for (ranking, relay, metric) in metric {
         println!(
-            "{},{},{},{}",
+            "{},{},{},{},{:?},{}",
             ranking,
             relay.nickname,
             relay.fingerprint(),
+            relay.ip,
+            relay.flags,
             metric,
         );
     }
