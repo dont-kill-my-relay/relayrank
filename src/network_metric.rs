@@ -416,9 +416,9 @@ pub fn compute<'a>(
     Ok(consensus
         .relays
         .par_iter()
-        .filter_map(|relay| {
+        .map(|relay| {
             if relay.is_dual() {
-                Some((
+                (
                     relay,
                     dual_metric(
                         relay,
@@ -430,9 +430,9 @@ pub fn compute<'a>(
                         &peg,
                         &consensus.bandwidth_weights,
                     ),
-                ))
+                )
             } else if relay.is_guard() {
-                Some((
+                (
                     relay,
                     guard_metric(
                         relay,
@@ -443,9 +443,9 @@ pub fn compute<'a>(
                         &peg,
                         &consensus.bandwidth_weights,
                     ),
-                ))
+                )
             } else if relay.is_exit() {
-                Some((
+                (
                     relay,
                     exit_metric(
                         relay,
@@ -456,9 +456,9 @@ pub fn compute<'a>(
                         &pge,
                         &consensus.bandwidth_weights,
                     ),
-                ))
+                )
             } else {
-                None
+                (relay, 0.0)
             }
         })
         .map(|(r, m)| (r, m))
