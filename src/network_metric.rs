@@ -2,23 +2,16 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use anyhow::{Context, Ok, Result, bail};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::{
-    parse_exclusion_list,
+    Mapping,
     tor_status::{BandwithWeights, Consensus, Relay, RelayId},
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Default, Serialize, Deserialize)]
-struct Mapping {
-    client_guard: Vec<RelayId>,
-    exit_destination: Vec<RelayId>,
-}
 
 type Probability<EVENT> = HashMap<EVENT, f64>;
 type ConditionnalProbability<EVENT, CODITION> = HashMap<CODITION, Probability<EVENT>>;
@@ -401,12 +394,11 @@ fn dual_metric(
     as_guard + as_exit
 }
 
-pub fn compute(
-    consensus: &Consensus,
+pub fn compute<'a>(
+    consensus: &'a Consensus,
     mapping_file: &Path,
     as_path_file: &Path,
-    exclusion_list: &Option<PathBuf>,
-) -> Result<()> {
+) -> Result<Vec<(&'a Relay, f64)>> {
     let (pag, pae) = extract_pag_pae_from_inference(as_path_file, mapping_file)?;
 
     let pg = pg(&consensus.relays, &consensus.bandwidth_weights);
@@ -421,7 +413,7 @@ pub fn compute(
         .map(|asn| asn.to_owned())
         .collect();
 
-    let mut metric: Vec<_> = consensus
+    Ok(consensus
         .relays
         .par_iter()
         .filter_map(|relay| {
@@ -470,32 +462,5 @@ pub fn compute(
             }
         })
         .map(|(r, m)| (r, m))
-        .collect();
-
-    metric.sort_by(|(_, m), (_, o)| m.total_cmp(o));
-    metric.reverse();
-    let iterator = metric.iter().enumerate().map(|(i, (r, m))| (i + 1, r, m));
-
-    let metric: Vec<_> = if let Some(exclusion_list) = exclusion_list {
-        let excluded = parse_exclusion_list(exclusion_list)?;
-        iterator
-            .filter(|(_, r, _)| excluded.contains(&r.id))
-            .collect()
-    } else {
-        iterator.collect()
-    };
-
-    for (ranking, relay, metric) in metric {
-        println!(
-            "{},{},{},{},{:?},{}",
-            ranking,
-            relay.nickname,
-            relay.fingerprint(),
-            relay.ip,
-            relay.flags,
-            metric,
-        );
-    }
-
-    Ok(())
+        .collect())
 }

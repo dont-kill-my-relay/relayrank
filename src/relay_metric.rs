@@ -1,12 +1,6 @@
-use std::path::PathBuf;
-
-use anyhow::Result;
 use rayon::prelude::*;
 
-use crate::{
-    parse_exclusion_list,
-    tor_status::{self, Consensus},
-};
+use crate::tor_status::{self, Consensus};
 
 struct Relay<'a> {
     relay: &'a tor_status::Relay,
@@ -70,8 +64,7 @@ fn metric_guard(guard: &Relay, relays: &[Relay]) -> f64 {
         .filter(|exit| exit.is_exit() && guard.reach(exit))
         .map(|exit| exit.bwe)
         .sum();
-    // dbg!((guard_value, exits_value));
-    guard_value * exits_value
+    guard_value * exits_value * 1e9
 }
 
 fn metric_exit(exit: &Relay, relays: &[Relay]) -> f64 {
@@ -81,19 +74,18 @@ fn metric_exit(exit: &Relay, relays: &[Relay]) -> f64 {
         .filter(|guard| guard.is_guard() && exit.reach(guard))
         .map(|guard| guard.bwg)
         .sum();
-    // dbg!((exit_value, guards_value));
-    exit_value * guards_value
+    exit_value * guards_value * 1e9
 }
 
 fn metric_dual(dual: &Relay, relays: &[Relay]) -> f64 {
     metric_guard(dual, relays) + metric_exit(dual, relays)
 }
 
-pub fn compute(consensus: &Consensus, exclusion_list: &Option<PathBuf>) -> Result<()> {
+pub fn compute(consensus: &Consensus) -> Vec<(&tor_status::Relay, f64)> {
     let (guard_bw_sum, exit_bw_sum) = compute_bandwith_sums(consensus);
     let relays = compute_normalized_bandwidth(consensus, guard_bw_sum, exit_bw_sum);
 
-    let mut metric: Vec<_> = relays
+    relays
         .par_iter()
         .map(|relay| match (relay.is_guard(), relay.is_exit()) {
             (true, true) => (relay.relay, metric_dual(relay, &relays)),
@@ -101,34 +93,5 @@ pub fn compute(consensus: &Consensus, exclusion_list: &Option<PathBuf>) -> Resul
             (false, true) => (relay.relay, metric_exit(relay, &relays)),
             (false, false) => (relay.relay, 0.0),
         })
-        .collect();
-
-    metric.sort_by(|(_, m), (_, o)| m.total_cmp(o));
-    metric.reverse();
-    let iterator = metric
-        .iter()
-        .enumerate()
-        .map(|(i, (r, m))| (i + 1, r, 1e9 * m));
-
-    let metric: Vec<_> = if let Some(exclusion_list) = exclusion_list {
-        let excluded = parse_exclusion_list(exclusion_list)?;
-        iterator
-            .filter(|(_, r, _)| excluded.contains(&r.id))
-            .collect()
-    } else {
-        iterator.collect()
-    };
-
-    for (ranking, relay, metric) in metric {
-        println!(
-            "{},{},{},{},{}",
-            ranking,
-            relay.nickname,
-            relay.fingerprint(),
-            relay.ip,
-            metric,
-        );
-    }
-
-    Ok(())
+        .collect()
 }

@@ -1,10 +1,10 @@
-alias c:=clean
-alias b:=bench
-
 bin := "relay-rank"
 relay_metric_args := "2023-05-15T12:00:00Z relay-metric"
 network_metric_args := "2022-10-05T12:00:00Z network-metric mapping_infer-2022-10-05T12.json 2022-10-07-asinfer-metric.txt"
 _cargo_release_path := "./target/release"
+
+alias c:=clean
+alias b:=bench
 
 [arg("cores", short)]
 bench cores="0":
@@ -29,4 +29,4 @@ flamegraph_network_metric: (_flamegraph network_metric_args)
 
 clean:
     cargo clean
-    rm -f perf.data perf.data.old flamegraph.svg
+    rm -f perf.data perf.data.old flamegraph.svg benches.json
