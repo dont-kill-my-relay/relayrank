@@ -8,7 +8,7 @@ _cargo_release_path := "./target/release"
 
 [arg("cores", short)]
 bench cores="0":
-    taskset -c {{cores}} cargo bench --features bench
+    taskset -c {{cores}} cargo criterion --features bench --message-format=json | jq -SMc "select(has(\"id\"))" > benches.json
 
 _hyperfine cores warmup runs bin args="" release_path=_cargo_release_path:
     cargo build --release
