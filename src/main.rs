@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -21,7 +21,11 @@ fn parse_exclusion_list(exclusion_list: &Path) -> Result<Vec<RelayId>> {
     content.lines().map(RelayId::from_hex).collect()
 }
 
-fn rank(mut metric: Vec<(&Relay, f64)>, exclusion_list: Option<PathBuf>) -> Result<()> {
+fn rank(
+    mut metric: Vec<(&Relay, f64)>,
+    exclusion_list: Option<PathBuf>,
+    out_file: &Path,
+) -> Result<()> {
     metric.sort_by(|(_, m), (_, o)| m.total_cmp(o));
     metric.reverse();
     let iterator = metric.iter().enumerate().map(|(i, (r, m))| (i + 1, r, m));
@@ -35,9 +39,15 @@ fn rank(mut metric: Vec<(&Relay, f64)>, exclusion_list: Option<PathBuf>) -> Resu
         iterator.collect()
     };
 
-    println!("ranking,nickname,fingerprint,ip,bandwidth,metric");
+    let mut output = File::create(out_file)?;
+
+    writeln!(
+        &mut output,
+        "ranking,nickname,fingerprint,ip,bandwidth,metric"
+    )?;
     for (ranking, relay, metric) in metric {
-        println!(
+        writeln!(
+            &mut output,
             "{},{},{},{},{},{}",
             ranking,
             relay.nickname,
@@ -45,7 +55,7 @@ fn rank(mut metric: Vec<(&Relay, f64)>, exclusion_list: Option<PathBuf>) -> Resu
             relay.ip,
             relay.consensus_bandwith,
             metric,
-        );
+        )?;
     }
 
     Ok(())
@@ -55,6 +65,8 @@ fn rank(mut metric: Vec<(&Relay, f64)>, exclusion_list: Option<PathBuf>) -> Resu
 struct Args {
     #[arg(long, default_value = "./cache")]
     cache: PathBuf,
+    #[arg(long, short)]
+    output: PathBuf,
     datetime: DateTime<Utc>,
     #[command(subcommand)]
     command: Command,
@@ -85,11 +97,11 @@ fn main() -> Result<()> {
             exclusion_list,
         } => {
             let metric = network_metric::compute(&consensus, &mapping_file, &as_path_file)?;
-            rank(metric, exclusion_list)?;
+            rank(metric, exclusion_list, &args.output)?;
         }
         Command::RelayMetric { exclusion_list } => {
             let metric = relay_metric::compute(&consensus);
-            rank(metric, exclusion_list)?;
+            rank(metric, exclusion_list, &args.output)?;
         }
     }
 

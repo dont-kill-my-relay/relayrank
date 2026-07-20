@@ -1,8 +1,8 @@
-FROM rust:1.97.1-slim AS build
+FROM rust:1.97.1-alpine3.24 AS builder
+RUN rustup target add x86_64-unknown-linux-musl
+WORKDIR /app
 COPY . /app
-WORKDIR /app
-RUN cargo build --release
+RUN cargo build --target x86_64-unknown-linux-musl --release
 
-FROM debian:stable-20260713-slim
-WORKDIR /app
-COPY --from=build /app/target/release/relay-rank .
+FROM scratch AS runtime
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/relay-rank .
