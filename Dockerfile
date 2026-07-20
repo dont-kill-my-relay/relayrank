@@ -1,4 +1,4 @@
-FROM rust:1.97.1-alpine3.24 AS builder
+FROM rust:1.97.1-slim AS builder
 RUN rustup target add x86_64-unknown-linux-musl
 WORKDIR /app
 COPY . /app
