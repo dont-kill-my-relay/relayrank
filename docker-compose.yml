@@ -2,6 +2,7 @@ services:
   relay-metric-2023-05:
     container_name: relay-metric-2023-05
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2023-05-15-relay-metric.csv --cache /data/cache 2023-05-15T12:00:00Z relay-metric /archive/exclusion-lists/2023-05-17
     volumes:
@@ -11,6 +12,7 @@ services:
   relay-metric-2022-10:
     container_name: relay-metric-2022-10
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2022-10-05-relay-metric.csv --cache /data/cache 2022-10-05T12:00:00Z relay-metric /archive/exclusion-lists/2022-10-07
     volumes:
@@ -20,6 +22,7 @@ services:
   relay-metric-2022-03:
     container_name: relay-metric-2022-03
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2022-03-19-relay-metric.csv --cache /data/cache 2022-03-19T12:00:00Z relay-metric /archive/exclusion-lists/2022-03-21
     volumes:
@@ -29,6 +32,7 @@ services:
   relay-metric-2021-12:
     container_name: relay-metric-2021-12
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2021-11-29-relay-metric.csv --cache /data/cache 2021-11-29T12:00:00Z relay-metric /archive/exclusion-lists/2021-12-01
     volumes:
@@ -38,6 +42,7 @@ services:
   network-metric-2023-05:
     container_name: network-metric-2023-05
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2023-05-15-network-metric.csv --cache /data/cache 2023-05-15T12:00:00Z network-metric /data/mapping_infer-2023-05-15T12.json /data/2023-05-15-asinfer-metric.txt /archive/exclusion-lists/2023-05-17
     volumes:
@@ -47,6 +52,7 @@ services:
   network-metric-2022-10:
     container_name: network-metric-2022-10
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2022-10-05-network-metric.csv --cache /data/cache 2022-10-05T12:00:00Z network-metric /data/mapping_infer-2022-10-05T12.json /data/2022-10-07-asinfer-metric.txt /archive/exclusion-lists/2022-10-07
     volumes:
@@ -56,6 +62,7 @@ services:
   network-metric-2022-03:
     container_name: network-metric-2022-03
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2022-03-19-network-metric.csv --cache /data/cache 2022-03-19T12:00:00Z network-metric /data/mapping_infer-2022-03-19T12.json /data/2022-03-21-asinfer-metric.txt /archive/exclusion-lists/2022-03-21
     volumes:
@@ -65,6 +72,7 @@ services:
   network-metric-2021-12:
     container_name: network-metric-2021-12
     user: "${UID_GID}"
+    image: relayrank:latest
     build: .
     command: /relay-rank -o /data/2021-11-29-network-metric.csv --cache /data/cache 2021-11-29T12:00:00Z network-metric /data/mapping_infer-2021-11-29T12.json /data/2021-12-01-asinfer-metric.txt /archive/exclusion-lists/2021-12-01
     volumes:
