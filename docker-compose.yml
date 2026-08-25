@@ -3,6 +3,7 @@ services:
     container_name: relay-metric-2023-05
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2023-05-15-relay-metric.csv
@@ -18,6 +19,7 @@ services:
     container_name: relay-metric-2022-10
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2022-10-05-relay-metric.csv
@@ -33,6 +35,7 @@ services:
     container_name: relay-metric-2022-03
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2022-03-19-relay-metric.csv
@@ -48,6 +51,7 @@ services:
     container_name: relay-metric-2021-12
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2021-11-29-relay-metric.csv
@@ -63,6 +67,7 @@ services:
     container_name: network-metric-2023-05
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2023-05-15-network-metric.csv
@@ -80,6 +85,7 @@ services:
     container_name: network-metric-2022-10
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2022-10-05-network-metric.csv
@@ -97,6 +103,7 @@ services:
     container_name: network-metric-2022-03
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2022-03-19-network-metric.csv
@@ -114,6 +121,7 @@ services:
     container_name: network-metric-2021-12
     user: "${UID_GID}"
     image: relayrank:latest
+    pull_policy: never
     build: .
     command:
       - -o=/data/2021-11-29-network-metric.csv
