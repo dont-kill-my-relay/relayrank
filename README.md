@@ -75,7 +75,7 @@ It takes only the exclusion list as an optional argument.
 
 ```bash
 ./relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
-    relay-metric [exclusion-list]
+relay-metric [exclusion-list]
 ```
 
 If an exclusion list is provided, the output contains only the ranking of the excluded relays.
@@ -90,7 +90,7 @@ This subcommand takes three arguments:
 
 ```bash
 ./relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
-    network-metric <mapping-file> <inference-result> [exclusion-list]
+network-metric <mapping-file> <inference-result> [exclusion-list]
 ```
 
 The mapping is obtained with the `utils/build_inference_file_net_metric.py` script in the
@@ -100,3 +100,38 @@ produce the second argument.
 See the [as-path-inference](https://github.com/dont-kill-my-relay/as-path-inference)
 repository to infer the AS-path.
 If an exclusion list is provided, the output contains only the ranking of the excluded relays.
+
+### Docker (Optional)
+
+The metrics can also be computed using Docker.
+To do this, make sure to have [Docker](https://docs.docker.com/engine/install/) installed with the [docker buildx plugin](https://github.com/docker/buildx).
+
+Build the image:
+```bash
+docker build -t relayrank:latest .
+```
+
+Compute a metric:
+```bash
+docker run --rm \
+-v $PWD/cache:/cache \
+-v $PWD/output:/output \
+relayrank:latest -o=output/relay-metric.csv "2022-03-19T12:00:00Z" relay-metric
+```
+
+This can also be done with docker compose:
+```yml
+services:
+  relay-metric-2022-03:
+    container_name: relay-metric-2022-03
+    image: relayrank:latest
+    pull_policy: never
+    build: .
+    command:
+      - -o=/output/2022-03-19-relay-metric.csv
+      - "2022-03-19T12:00:00Z"
+      - relay-metric
+    volumes:
+      - ./output:/output
+      - ./cache:/cache
+```
