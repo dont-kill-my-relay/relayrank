@@ -65,7 +65,7 @@ See the [relay-rejection](https://github.com/dont-kill-my-relay/relay-rejection)
 You can then use the appropriate subcommand depending on your metric.
 
 ```bash
-./relay-rank -o=metric.csv "2022-03-19T12:00:00Z" <sub-command>
+relay-rank -o=metric.csv "2022-03-19T12:00:00Z" <sub-command>
 ```
 
 ### Relay-adversary metric
@@ -74,7 +74,7 @@ The `relay-metric` subcommand computes the relay-adversary metric.
 It takes only the exclusion list as an optional argument.
 
 ```bash
-./relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
+relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
 relay-metric [exclusion-list]
 ```
 
@@ -89,7 +89,7 @@ This subcommand takes three arguments:
   - The exclusion list (optional).
 
 ```bash
-./relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
+relay-rank -o=network-metric.csv "2022-03-19T12:00:00Z" \
 network-metric <mapping-file> <inference-result> [exclusion-list]
 ```
 
